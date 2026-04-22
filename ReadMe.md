@@ -898,7 +898,33 @@ scribbles.config({
 })
 ```
 
-When `pretty.syntaxHighlight` is **true** (the default) together with `colors`, scribbles paints Map/Set/Date/Error shapes, keys, brackets, strings, numbers, circular markers (`{ ...! }`), depth truncation (`{ + }`), function shorthands, variable-name labels (`userData:`), and `String"…"` disambiguation using distinct ANSI roles. The **line-level** log color (cyan for `log`, etc.) is applied only to the plain template **prefix** before the `{value}` column—not as one outer wrap around the entire line—so metadata and `{message}` match other rows at the same level while inner syntax colors are not clipped by a single outer reset. `dataOut` still receives raw structured entries without ANSI. Custom `stringify` bypasses automatic value highlighting.
+When `pretty.syntaxHighlight` is **true** (the default) together with `colors`, scribbles paints Map/Set/Date/Error shapes, keys, brackets, strings, numbers, circular markers (`{ ...! }`), depth truncation (`{ + }`), function shorthands, variable-name labels (`userData:`), and `String"…"` disambiguation using distinct ANSI roles. The template **prefix** before `{value}` is **not** wrapped in a single outer level color: either **semantic prose** (`38;2` tiers from `pretty.proseColor`, default on) or, when `pretty.prosePrefix` is `false`, a flat `colorScheme[level]` wash on that prefix only—so inner syntax colors are not clipped by one outer reset. `dataOut` still receives raw structured entries without ANSI. Custom `stringify` bypasses automatic value highlighting.
+
+### Prose prefix (semantic brightness)
+
+When `colors`, `pretty.syntaxHighlight`, and `pretty.prosePrefix` (default `true`) are on, the template prefix uses **24-bit foreground** sequences (`\x1b[38;2;r;g;bm`) from an anchor `pretty.proseColor` (default `#DDDDDD`) — **even when the `{value}` column is empty or has no syntax SGR**, so early “message-only” lines match later object logs. **Layout** still comes from `config.format` (see default in [`src/core/config.js`](src/core/config.js)); **brightness** comes from **token names**, not placeholder order.
+
+| Tier | Tokens | Default darken (toward black) |
+|------|--------|-------------------------------|
+| A — git | `repo`, `mode`, `branch`, `hash` | 0.55 |
+| B — trace | `spanLabel`, `spanId` | 0.50 |
+| C — time | `time` | 0.30 |
+| D — locate + severity | `fileName`, `lineNumber`, `logLevel` | 0.12 |
+| E — caption | `message` | 0 |
+
+Literals (`:`, `#`, spaces, …) use the same darken as their **enclosing region** (or max of neighbors outside wrappers). Wrappers `[]`, `<>`, `()`, `{}` are paired best-effort; **delimiters** are slightly darker than the inner reference (`pretty.proseWrapperExtraDarken`, default `0.05`). **Empty** inner spans use `pretty.proseEmptyRegionDarken` (default `0.75`). **Empty `{message}`** uses that same empty-region treatment. **Non-empty `{message}`** can be lifted toward the anchor with `pretty.proseMessageLift`. **`{logLevel}`** adds `colorScheme[level]` as a nested 16-color accent inside the prose dim band. Override per-token factors with `pretty.proseFieldDarken` (shallow merge over defaults) and scale everything with `pretty.proseImportanceScale`.
+
+**Multi-line:** After compile, the line is split on `\n`. Line 0 gets the prose walk on the prefix before `{value}`; following lines (e.g. `{stackTrace}`) are dimmed with `pretty.proseContinuationDarken` (default `0.65`). If `{value}` ever embeds newlines, prefix detection on line 0 could desync—avoid that shape or set `prosePrefix: false`.
+
+**Tuning keys:** `proseColor`, `prosePrefix`, `proseImportanceScale`, `proseFieldDarken`, `proseMessageLift`, `proseWrapperExtraDarken`, `proseEmptyRegionDarken`, `proseContinuationDarken`. **`NO_COLOR`** / `colors: false` disables all SGR, including prose.
+
+**Examples**
+
+1. **Minimal** — default `format`, `proseColor: '#DDDDDD'`, `scribbles.log('hello', { x: 1 })`: git block muted, time mid, `<log>` with cyan level inside dim prose, message brighter, value column syntax-highlighted.
+2. **Green anchor** — `proseColor: '#00FF00'`: tiers interpolate toward black from green instead of gray.
+3. **Multi-line** — `scribbles.error('ctx', {}, err)` with `{stackTrace}` in `format`: first line full prose; stack lines a single continuation `38;2` per line.
+
+Integration coverage: [`__tests__/50-prose-prefix.test.js`](__tests__/50-prose-prefix.test.js).
 
 ### Value syntax highlighting (reference)
 

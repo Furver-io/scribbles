@@ -46,31 +46,26 @@ describe('Colored Log Output', () => {
     it('should colorize error logs red', () => {
       scribbles.error('error message');
       expect(stdOutCalls[0]).toContain(ANSI.red);
-      expect(stdOutCalls[0]).toContain(ANSI.reset);
     });
 
     it('should colorize warn logs yellow', () => {
       scribbles.warn('warning message');
       expect(stdOutCalls[0]).toContain(ANSI.yellow);
-      expect(stdOutCalls[0]).toContain(ANSI.reset);
     });
 
     it('should colorize log logs cyan', () => {
       scribbles.log('log message');
       expect(stdOutCalls[0]).toContain(ANSI.cyan);
-      expect(stdOutCalls[0]).toContain(ANSI.reset);
     });
 
     it('should colorize info logs green', () => {
       scribbles.info('info message');
       expect(stdOutCalls[0]).toContain(ANSI.green);
-      expect(stdOutCalls[0]).toContain(ANSI.reset);
     });
 
     it('should colorize debug logs gray', () => {
       scribbles.debug('debug message');
       expect(stdOutCalls[0]).toContain(ANSI.gray);
-      expect(stdOutCalls[0]).toContain(ANSI.reset);
     });
   });
 

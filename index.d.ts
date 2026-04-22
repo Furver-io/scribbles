@@ -41,6 +41,28 @@ interface PrettyOptions {
      * Values are color names accepted by `colors.js` / {@link ScribblesConfig.colorScheme} keys.
      */
     syntaxColorScheme?: { [role: string]: string };
+    /**
+     * When false with colors + syntax highlight, use a single `colorScheme[level]`
+     * wash on the plain prefix instead of semantic `38;2` prose. Default: true.
+     */
+    prosePrefix?: boolean;
+    /**
+     * Anchor `#RRGGBB` for prose dimming; literals and tokens interpolate toward black
+     * from this color by semantic tier. Default: `#DDDDDD`.
+     */
+    proseColor?: string;
+    /** Multiplier for all default and `proseFieldDarken` factors. Default: 1. */
+    proseImportanceScale?: number;
+    /** Per-token darken overrides (0–1 scale before `proseImportanceScale`). */
+    proseFieldDarken?: { [token: string]: number };
+    /** Subtract from `{message}` darken when non-empty (lift toward anchor). Default: 0. */
+    proseMessageLift?: number;
+    /** Extra darken added to wrapper delimiters vs inner reference. Default: 0.05. */
+    proseWrapperExtraDarken?: number;
+    /** Darken for empty wrapper/message regions. Default: 0.75. */
+    proseEmptyRegionDarken?: number;
+    /** Darken for lines after the first (e.g. stack). Default: 0.65. */
+    proseContinuationDarken?: number;
 }
 
 /**

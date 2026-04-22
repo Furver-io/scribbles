@@ -16,9 +16,9 @@ const {
  * Paint only the template text before the `{value}` column with the log-level color.
  *
  * Domain: when syntax highlighting is on, the value substring carries its own SGR; a
- * whole-line `colorize()` would clash with inner resets. Message/path/time should
- * still match non-syntax lines at the same level (explicit `colorScheme[level]`), not
- * the host “default” fg that often reads as white next to green `info` rows.
+ * whole-line `colorize()` would clash with inner resets. When prose tiers are off,
+ * message/path/time still use `colorScheme[level]` on the plain prefix. When prose is
+ * on, `scribbleStdOutFormat` paints `38;2` tiers and level accent instead.
  *
  * Technical: `outputValue` is the exact `{value}` substitution from `scribble.js`;
  * we split `compiledLine` at its first occurrence. If it is missing or at column 0,
@@ -49,6 +49,7 @@ function applyLevelColorToPlainPrefixOnly(compiledLine, levelColor, outputValue)
  * @param {string} compiledLine - Already compiled template body line.
  * @param {string} [levelColor] - Named color from `colorScheme[level]` when not using the tree.
  * @param {string} [outputValue] - Rendered `{value}` column (detect ANSI only here, not whole line).
+ * @param {boolean} [plainPrefixPreColored] - When true, prose painting already ran on the prefix.
  * @returns {string} Full line to write to stdOut
  */
 function formatGroupLogLineForStdOut(
@@ -57,11 +58,13 @@ function formatGroupLogLineForStdOut(
   groupLevel,
   compiledLine,
   levelColor,
-  outputValue
+  outputValue,
+  plainPrefixPreColored
 ) {
   // When the `{value}` column uses syntax SGR, skip a single outer `colorize()` around
   // the full line (inner `\x1b[39m` / token colors break that). We still paint the
-  // plain prefix (everything before the rendered `outputValue`) with `colorScheme[level]`.
+  // plain prefix (everything before the rendered `outputValue`) with `colorScheme[level]`
+  // unless prose tiers were applied upstream.
   const valueHasSyntaxAnsi =
     typeof outputValue === 'string' && outputValue.indexOf('\x1b[') !== -1;
   const useSyntaxPrefixLevelColor =
@@ -69,6 +72,7 @@ function formatGroupLogLineForStdOut(
     config.pretty.syntaxHighlight &&
     config.colors &&
     valueHasSyntaxAnsi;
+  const applyPlainPrefix = useSyntaxPrefixLevelColor && !plainPrefixPreColored;
 
   let groupPrefix = '';
   let treePrefixColored = null;
@@ -112,9 +116,12 @@ function formatGroupLogLineForStdOut(
     const lc = levelColor;
     let lineBody = compiledLine;
     if (config.colors && config.colorScheme && lc) {
-      lineBody = useSyntaxPrefixLevelColor
+      lineBody = applyPlainPrefix
         ? applyLevelColorToPlainPrefixOnly(compiledLine, lc, outputValue)
-        : colorize(compiledLine, lc);
+        : compiledLine;
+      if (!applyPlainPrefix && !plainPrefixPreColored) {
+        lineBody = colorize(compiledLine, lc);
+      }
     }
     return treePrefixColored + lineBody;
   }
@@ -123,9 +130,17 @@ function formatGroupLogLineForStdOut(
   if (config.colors && config.colorScheme) {
     const lc = levelColor;
     if (lc) {
-      formattedOutput = useSyntaxPrefixLevelColor
-        ? groupPrefix + applyLevelColorToPlainPrefixOnly(compiledLine, lc, outputValue)
-        : colorize(groupPrefix + compiledLine, lc);
+      if (applyPlainPrefix) {
+        formattedOutput = groupPrefix + applyLevelColorToPlainPrefixOnly(
+          compiledLine,
+          lc,
+          outputValue
+        );
+      } else if (plainPrefixPreColored) {
+        formattedOutput = groupPrefix + compiledLine;
+      } else {
+        formattedOutput = colorize(groupPrefix + compiledLine, lc);
+      }
     }
   }
   return formattedOutput;

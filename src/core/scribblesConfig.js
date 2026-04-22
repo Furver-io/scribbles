@@ -8,6 +8,7 @@ const config = require('./config');
 const { getSource } = require('../utils/helpers');
 const { defaultColorScheme, colorblindScheme, shouldEnableColors } = require('../formatting/colors');
 const { mergeResolvedSyntaxScheme } = require('../formatting/stringifySyntax');
+const { applyProsePrettyConfig } = require('./scribblesConfigProse');
 
 /**
  * Default visible caption for `groupEnd` when the caller does not pass an override string.
@@ -122,6 +123,8 @@ function createConfig(deps) {
     } else if (config.pretty) {
       delete config.pretty.__syntaxColorResolved;
     }
+
+    applyProsePrettyConfig(config);
 
     // Setup git info from environment
     if (config.gitEnv) {

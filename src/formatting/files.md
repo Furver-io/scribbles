@@ -8,6 +8,8 @@ Output formatting and display.
 formatting/
 ├── colors.js
 ├── groupLogPrefix.js
+├── prosePrefixPaint.js
+├── prosePrefixParse.js
 ├── stringify.js
 ├── stringifyImpl.js
 ├── stringifyUtils.js
@@ -19,10 +21,16 @@ formatting/
 ## Files
 
 ### `colors.js`
-ANSI color utilities for terminal output, including color schemes, colorblind accessibility mode, and auto-detection (respects `NO_COLOR`, `FORCE_COLOR`, and `CI` environment variables). Also hosts `groupTreeOpenAtDepth` and helpers for per-depth 24-bit rail colors when `pretty.groupBrackets` and colors are on.
+ANSI color utilities for terminal output, including color schemes, colorblind accessibility mode, and auto-detection (respects `NO_COLOR`, `FORCE_COLOR`, and `CI` environment variables). Also hosts `groupTreeOpenAtDepth` and helpers for per-depth 24-bit rail colors when `pretty.groupBrackets` and colors are on. Prose helpers: `rgbFgOpen`, `parseProseHexColor`, `lerpRgbTowardBlack`, `clampProseFactor`.
 
 ### `groupLogPrefix.js`
-Builds group-marker and in-group line prefixes for `body.toString` (tree rails, optional colored lanes); delegates to `colors.js` for 24-bit segments. When `pretty.syntaxHighlight` is on and the `{value}` column contains syntax SGR, applies `colorScheme[level]` only to the plain template prefix before that column (not a single outer wrap of the whole line); `stringifySyntax.js` ends each token with SGR 39 instead of a full reset where appropriate.
+Builds group-marker and in-group line prefixes for `body.toString` (tree rails, optional colored lanes); delegates to `colors.js` for 24-bit segments. When `pretty.syntaxHighlight` is on and the `{value}` column contains syntax SGR, applies `colorScheme[level]` only to the plain template prefix before that column **unless** `scribbleStdOutFormat` already applied prose (`plainPrefixPreColored`); `stringifySyntax.js` ends each token with SGR 39 instead of a full reset where appropriate.
+
+### `prosePrefixParse.js`
+Tokenizes `config.format` into literal and `{name}` segments, splits wrapper punctuation into standalone literals, and exposes `coerceField` / bracket matching helpers for `prosePrefixPaint.js`.
+
+### `prosePrefixPaint.js`
+Walks the compiled prefix (before `{value}`) and emits semantic `38;2` bands, wrapper/empty-region rules, `{message}` lift, and nested `{logLevel}` accent.
 
 ### `stringify.js`
 Thin re-export of `stringifyImpl.stringify` (value serialization entry for tests and `scribble.js`).

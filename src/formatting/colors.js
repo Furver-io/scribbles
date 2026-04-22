@@ -105,6 +105,58 @@ function rgbFgOpen(r, g, b) {
 }
 
 /**
+ * Parse a strict `#RRGGBB` prose anchor (24-bit terminal foreground).
+ *
+ * Domain: `pretty.proseColor` drives semantic dimming tiers for the template prefix.
+ * Technical: rejects short forms and alpha; used before emitting `38;2` segments.
+ *
+ * @param {string} str - Hex color such as `#DDDDDD`.
+ * @returns {{ r: number, g: number, b: number }|null} RGB 0–255 or null if invalid.
+ */
+function parseProseHexColor(str) {
+  if (typeof str !== 'string') {
+    return null;
+  }
+  const m = str.match(/^#([\da-fA-F]{6})$/);
+  if (!m) {
+    return null;
+  }
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+/**
+ * Linearly darken RGB toward black (multiply by `1 - t`).
+ *
+ * @param {number} r
+ * @param {number} g
+ * @param {number} b
+ * @param {number} t - Mix amount in [0, 1]; 0 keeps anchor, 1 is black.
+ * @returns {[number, number, number]} Clamped integer components.
+ */
+function lerpRgbTowardBlack(r, g, b, t) {
+  const u = Math.max(0, Math.min(1, t));
+  return [
+    Math.round(r * (1 - u)),
+    Math.round(g * (1 - u)),
+    Math.round(b * (1 - u))
+  ];
+}
+
+/**
+ * Clamp a numeric prose factor to [0, 1] for darken/lift math.
+ *
+ * @param {number} x
+ * @returns {number}
+ */
+function clampProseFactor(x) {
+  if (Number.isNaN(x)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, x));
+}
+
+/**
  * @param {number} depth1Based - Nesting depth (outermost group = 1).
  * @param {boolean} colorblindMode
  * @returns {string} Opener sequence for that lane (not including reset).
@@ -241,5 +293,9 @@ module.exports = {
   groupTreeOpenAtDepth,
   colorizeGroupTree,
   groupBracketTailOpen,
-  formatColoredGroupBracketPrefix
+  formatColoredGroupBracketPrefix,
+  rgbFgOpen,
+  parseProseHexColor,
+  lerpRgbTowardBlack,
+  clampProseFactor
 };

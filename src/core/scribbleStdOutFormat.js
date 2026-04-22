@@ -16,6 +16,76 @@ const {
   paintValueLabel,
   paintStringDisambiguation
 } = require('../formatting/stringifySyntax');
+const { paintProseTemplatePrefix } = require('../formatting/prosePrefixPaint');
+const {
+  parseProseHexColor,
+  lerpRgbTowardBlack,
+  rgbFgOpen,
+  ANSI,
+  clampProseFactor
+} = require('../formatting/colors');
+
+/**
+ * After `__compile`, paint semantic prose on line 0 before `{value}` and dim stack lines.
+ *
+ * Domain: stack traces append `\n` after the value; continuation lines read quieter than
+ * the anchor line. If `{value}` ever embeds `\n`, `indexOf(outputValue)` on line 0 may
+ * not represent the full value — prose would desync; `paintProseTemplatePrefix` then
+ * returns the plain prefix unchanged.
+ *
+ * @param {string} compiledLine - Full compiled template output (may contain `\n`).
+ * @param {string} outputValue - Rendered `{value}` column (label + syntax-colored payload).
+ * @param {Object} templateData - Same object passed to `config.__compile`.
+ * @param {Object} config - Active scribbles config.
+ * @param {string|undefined} levelColorName - `colorScheme[level]` for `{logLevel}` accent.
+ * @returns {{ line: string, didPrefixPaint: boolean }} `didPrefixPaint` false when the
+ *   prefix slice could not be painted (desync) so `groupLogPrefix` may fall back to level color.
+ */
+function applyProseMultilineToCompiledLine(
+  compiledLine,
+  outputValue,
+  templateData,
+  config,
+  levelColorName
+) {
+  const lines = compiledLine.split('\n');
+  const line0 = lines[0];
+  // `indexOf('')` is 0 — treat empty `{value}` as “prefix is the whole line” so prose still runs.
+  let v0;
+  if (outputValue == null || outputValue === '') {
+    v0 = line0.length;
+  } else if (typeof outputValue === 'string') {
+    v0 = line0.indexOf(outputValue);
+  } else {
+    v0 = -1;
+  }
+  let didPrefixPaint = false;
+  if (v0 !== -1 && (v0 > 0 || v0 === line0.length)) {
+    const pre = line0.slice(0, v0);
+    const post = line0.slice(v0);
+    const paintedPre = paintProseTemplatePrefix({
+      prefixText: pre,
+      all: templateData,
+      config,
+      levelColorName
+    });
+    lines[0] = paintedPre + post;
+    didPrefixPaint = paintedPre !== pre;
+  }
+  const p = config.pretty;
+  const anchor = parseProseHexColor(p.proseColor || '#DDDDDD');
+  if (anchor && lines.length > 1) {
+    const scale = p.proseImportanceScale !== undefined ? p.proseImportanceScale : 1;
+    const cd =
+      (p.proseContinuationDarken !== undefined ? p.proseContinuationDarken : 0.65) * scale;
+    const [r, g, b] = lerpRgbTowardBlack(anchor.r, anchor.g, anchor.b, clampProseFactor(cd));
+    const open = rgbFgOpen(r, g, b);
+    for (let i = 1; i < lines.length; i++) {
+      lines[i] = open + lines[i] + ANSI.fgDefault;
+    }
+  }
+  return { line: lines.join('\n'), didPrefixPaint };
+}
 
 /**
  * Build the string passed to `stdOut` for one log entry.
@@ -33,6 +103,9 @@ const {
  * @param {*} ctx.error - Error argument or `notUsed`.
  * @param {Object} ctx.notUsed - Sentinel object for missing args.
  * @returns {string} Single line (or multi-line when stack appended) for the terminal.
+ *
+ * Technical: semantic prose runs for every syntax-highlighted line when `prosePrefix` is on,
+ * not only when `{value}` already contains SGR — otherwise message-only rows would lose tiers.
  */
 function formatScribbleStdOutLine(ctx) {
   const {
@@ -144,20 +217,46 @@ function formatScribbleStdOutLine(ctx) {
     : '';
 
   const groupLevel = body.context.groupLevel || 0;
-  const compiledLine = config.__compile(Object.assign(all, {
+  const templateData = Object.assign(all, {
     time,
     value: outputValue,
     message: outputMessage,
     stackTrace: outputStackTrace
-  }));
+  });
+  const compiledLine = config.__compile(templateData);
   const levelColor = config.colorScheme && config.colorScheme[level];
+
+  // Prose tiers run whenever syntax mode is on — not only when `{value}` already contains
+  // SGR. Otherwise message-only or empty-value lines skip prose while object logs get tiers.
+  const useProsePrefix =
+    config.colors &&
+    config.pretty &&
+    config.pretty.syntaxHighlight &&
+    config.pretty.prosePrefix !== false &&
+    !!parseProseHexColor(config.pretty.proseColor || '#DDDDDD');
+
+  let lineForStdOut = compiledLine;
+  let plainPrefixPreColored = false;
+  if (useProsePrefix) {
+    const proseResult = applyProseMultilineToCompiledLine(
+      compiledLine,
+      outputValue,
+      templateData,
+      config,
+      levelColor
+    );
+    lineForStdOut = proseResult.line;
+    plainPrefixPreColored = proseResult.didPrefixPaint;
+  }
+
   return formatGroupLogLineForStdOut(
     config,
     level,
     groupLevel,
-    compiledLine,
+    lineForStdOut,
     levelColor,
-    outputValue
+    outputValue,
+    plainPrefixPreColored
   );
 }
 

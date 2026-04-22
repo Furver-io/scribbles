@@ -1,16 +1,13 @@
 /**
  * @file Core scribble logging function
  */
-const moment = require('moment');
-
 const config = require('./config');
 const args2keys = require('../parsing/args2keys');
 const { getSource } = require('../utils/helpers');
-const stringify = require('../formatting/stringify');
 const status = require('../system/status');
 const { myNamespace } = require('../tracing/namespace');
 const { parceStringVals } = require('../parsing/parceStringVals');
-const { formatGroupLogLineForStdOut } = require('../formatting/groupLogPrefix');
+const { formatScribbleStdOutLine } = require('./scribbleStdOutFormat');
 
 const notUsed = { not: 'used' }
 
@@ -49,8 +46,6 @@ function createScribble(deps) {
     }
 
     let { message, value, error, indexs } = args2keys(args, notUsed);
-
-    const argValName = argNames[indexs.indexOf("value")] || ""
     if ("statusX" === level) {
       const now = new Date();
       from = from || getSource(new Error().stack)
@@ -130,70 +125,19 @@ function createScribble(deps) {
         from: new Error().stack.split('\n').slice(1).filter(line => !!line).map(line => line.trim())
       },
       toString: function () {
-
-        const all = Object.keys(body).reduce((all, topics) => Object.assign(all, body[topics]), { v: sVer })
-
-        const time = moment(body.info.time).format(config.time);
-
-        let outputMessage = all.message;
-
-        /* istanbul ignore if */
-        if (typeof outputMessage === 'symbol') {
-          outputMessage = outputMessage.toString();
-        }
-
-        if ("string" === typeof outputMessage
-          && ["{", "["].includes(outputMessage.trim()[0])) {
-          outputMessage = `String"${outputMessage}"`
-        }
-        if (-1 === indexs.indexOf("value")
-          && 0 === indexs.indexOf("message")
-          && argNames[0]) {
-          outputMessage = argNames[0] + ":" + outputMessage
-        }
-        let outputValue = value;
-        if (notUsed === value
-          || ["timer", "timerEnd"].includes(level)) {
-          outputValue = ''
-        } else if ("function" === typeof config.stringify) {
-          outputValue = config.stringify(value, config.pretty)
-        } else if (typeof value === 'symbol') {
-          outputValue = value.toString()
-        } else if (!value) {
-          outputValue = value + ""
-        } else if ('function' === typeof value) {
-          outputValue = value.toString()
-        } else if ('object' === typeof value || Array.isArray(value)) {
-          outputValue = stringify(value, config.pretty)
-        } else if ("string" === typeof value) {
-          if (["{", "["].includes(value.trim()[0]))
-            outputValue = `String"${value}"`
-        }
-        outputValue = (argValName ? argValName + ":" : "") + outputValue
-        const outputStackTrace = notUsed !== error ? "\n" + (originalMessage
-          ? "Error: " + originalMessage + "\n"
-          : "") + stackTrace.map(line => ` at ${line}`).join("\n")
-          : "";
-
-        // Group stdOut layout (tree rails, optional per-depth 24-bit color) lives in
-        // `formatting/groupLogPrefix.js` so this file stays under the size gate.
-        const groupLevel = body.context.groupLevel || 0
-        const compiledLine = config.__compile(Object.assign(all, {
-          time,
-          value: outputValue,
-          message: outputMessage,
-          stackTrace: outputStackTrace
-        }))
-        const levelColor = config.colorScheme && config.colorScheme[level]
-        const formattedOutput = formatGroupLogLineForStdOut(
+        return formatScribbleStdOutLine({
+          body,
           config,
+          sVer,
+          indexs,
+          argNames,
+          value,
           level,
-          groupLevel,
-          compiledLine,
-          levelColor
-        )
-
-        return formattedOutput;
+          originalMessage,
+          stackTrace,
+          error,
+          notUsed
+        });
       }
     } // END body
 

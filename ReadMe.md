@@ -881,7 +881,34 @@ scribbles.config({
   colors: true,
   colorblindMode: true
 })
+
+// Syntax-highlighted values in the `{value}` column are on by default when `colors` is true.
+// Opt out (whole-line level color only, no key/bracket roles):
+scribbles.config({
+  colors: true,
+  pretty: { syntaxHighlight: false }
+})
+
+// Optional: tune role colors (syntax highlighting stays on unless you set syntaxHighlight: false)
+scribbles.config({
+  colors: true,
+  pretty: {
+    syntaxColorScheme: { number: 'brightBlue' }
+  }
+})
 ```
+
+When `pretty.syntaxHighlight` is **true** (the default) together with `colors`, scribbles paints Map/Set/Date/Error shapes, keys, brackets, strings, numbers, circular markers (`{ ...! }`), depth truncation (`{ + }`), function shorthands, variable-name labels (`userData:`), and `String"…"` disambiguation using distinct ANSI roles. The **line-level** log color (cyan for `log`, etc.) is applied only to the plain template **prefix** before the `{value}` column—not as one outer wrap around the entire line—so metadata and `{message}` match other rows at the same level while inner syntax colors are not clipped by a single outer reset. `dataOut` still receives raw structured entries without ANSI. Custom `stringify` bypasses automatic value highlighting.
+
+### Value syntax highlighting (reference)
+
+**When it runs.** Role-based ANSI is applied to the rendered `{value}` column when `colors` is true, `pretty.syntaxHighlight` is not set to `false` (it defaults to on), and you are **not** using a custom `config.stringify`. A custom `stringify` receives the raw pretty options but scribbles does not post-paint its return value. Setting `colors: false` or honoring `NO_COLOR` disables syntax SGR along with all other colors.
+
+**Palettes.** In normal mode, defaults follow `src/formatting/stringifySyntax.js` (`defaultSyntaxColorScheme`). With `colorblindMode: true`, the base map is `syntaxColorblindScheme`; `pretty.syntaxColorScheme` is shallow-merged on top for whichever mode is active, so you can override individual roles without redefining the full map.
+
+**Line layout.** Prefix coloring assumes the `{value}` format token is filled with the same string scribbles uses for detection (the rendered value column, including optional `name:` labels). Keep the default `{message} {value}` ordering unless you know duplicated substrings could make the prefix split ambiguous; integration coverage for stdout lives in `__tests__/49-syntax-highlight.test.js`.
+
+**`syntaxColorScheme` role keys.** Each value must be a color name accepted by the formatter (see [Available Colors](#available-colors) in this file). Roles: `bracket`, `comma`, `colon`, `typeName`, `key`, `string`, `number`, `boolean`, `nullish`, `symbol`, `regex`, `function`, `arrayIndex`, `circular`, `truncation`, `identifierLabel` (text before `:` for extracted variable names), `disambiguationPrefix` (the `String` prefix in `String"…"`), `fallback` (unknown role), `transformOutput` (segments produced after `pretty.transform` that are not re-lexed).
 
 ### Environment Variables
 
@@ -1200,7 +1227,8 @@ Scribbles uses a modular architecture with the main entry point (`index.js`) ser
 | `middleware.js` | Express middleware for trace context propagation |
 | `namespace.js` | CLS namespace for async trace correlation |
 | `hijacker.js` | HTTP/HTTPS request interception for header injection |
-| `stringify.js` | Custom JSON stringification with pretty printing |
+| `stringify.js` / `stringifyImpl.js` | Value serialization (pretty-printed; `pretty.syntaxHighlight` defaults true with colors) |
+| `stringifySyntax.js` | Syntax color palettes and painters for the `{value}` column |
 | `status.js` | System status collection (CPU, memory, process) |
 | `helpers.js` | Utility functions (deepMerge, getSource) |
 | `args2keys.js` | Argument parsing for log functions |

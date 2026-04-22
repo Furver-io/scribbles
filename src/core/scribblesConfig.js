@@ -7,6 +7,7 @@ const { performance } = require('perf_hooks');
 const config = require('./config');
 const { getSource } = require('../utils/helpers');
 const { defaultColorScheme, colorblindScheme, shouldEnableColors } = require('../formatting/colors');
+const { mergeResolvedSyntaxScheme } = require('../formatting/stringifySyntax');
 
 /**
  * Default visible caption for `groupEnd` when the caller does not pass an override string.
@@ -54,7 +55,10 @@ function createConfig(deps) {
     const defaultPretty = config.pretty = config.pretty || {}
 
     Object.assign(config, opts);
-    Object.assign(config.pretty, defaultPretty, opts.pretty || {});
+    // Shallow copy avoids `Object.assign(config.pretty, a, config.pretty)` when
+    // `opts.pretty` replaced `config.pretty` by reference — user keys must win.
+    const prettyIncoming = opts.pretty ? { ...opts.pretty } : {};
+    Object.assign(config.pretty, defaultPretty, prettyIncoming);
 
     // Setup colors configuration
     if (config.colors === undefined) {
@@ -102,6 +106,21 @@ function createConfig(deps) {
 
     if (undefined === config.pretty.singleQuotes) {
       config.pretty.singleQuotes = false
+    }
+
+    // Value-column syntax highlighting (keys, brackets, types, …) defaults on; set false to opt out.
+    if (undefined === config.pretty.syntaxHighlight) {
+      config.pretty.syntaxHighlight = true;
+    }
+
+    // Resolved syntax palette for value serialization (used when colors + syntaxHighlight)
+    if (config.colors && config.pretty && config.pretty.syntaxHighlight) {
+      config.pretty.__syntaxColorResolved = mergeResolvedSyntaxScheme(
+        !!config.colorblindMode,
+        config.pretty.syntaxColorScheme
+      );
+    } else if (config.pretty) {
+      delete config.pretty.__syntaxColorResolved;
     }
 
     // Setup git info from environment

@@ -5,6 +5,8 @@
 // ANSI escape codes
 const ANSI = {
   reset: '\x1b[0m',
+  /** SGR 39: default foreground only (does not clear bold/dim like {@link ANSI.reset}). */
+  fgDefault: '\x1b[39m',
   // Standard colors
   red: '\x1b[31m',
   green: '\x1b[32m',

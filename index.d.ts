@@ -25,6 +25,22 @@ interface PrettyOptions {
     transform?: (obj: object, key: string, value: string) => string;
     /** Use ASCII brackets (⎡⎜⎣) for group indentation (default: false) */
     groupBrackets?: boolean;
+    /**
+     * When true with `colors`, emit ANSI syntax roles for the `{value}` column
+     * (keys, brackets, type names, primitives, etc.). `colorScheme[level]` is
+     * applied only to the plain template prefix before `{value}` so inner token
+     * colors are not wrapped by a single outer SGR. Default: true (set false for
+     * whole-line level color only, no per-token roles).
+     */
+    syntaxHighlight?: boolean;
+    /**
+     * Overrides for syntax roles (shallow-merged over defaults; base map switches
+     * with `colorblindMode`). Role keys include: bracket, comma, colon, typeName,
+     * key, string, number, boolean, nullish, symbol, regex, function, arrayIndex,
+     * circular, truncation, identifierLabel, disambiguationPrefix, fallback, transformOutput.
+     * Values are color names accepted by `colors.js` / {@link ScribblesConfig.colorScheme} keys.
+     */
+    syntaxColorScheme?: { [role: string]: string };
 }
 
 /**

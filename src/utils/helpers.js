@@ -43,6 +43,40 @@ function deepMerge(target, source) {
 //++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 /**
+ * When the legacy `rawLines[2]` slice fails to yield `file:line` (Bun, ESM dynamic
+ * import, or frames without a column), scribbles would emit `{fileName}:{lineNumber}`
+ * with a blank or `?` line — operators lose the real call site. Walk the full stack
+ * and return the first frame that looks like `*.js:line[:col]`, skipping scribbles
+ * internals and `node:` builtins so we prefer user/gateway code.
+ *
+ * @param {string} stack - Full `Error.prototype.stack` string
+ * @returns {{ file: string, line: number, col: number } | null} Parsed location or null
+ */
+function walkStackForJsLocation(stack) {
+  if (typeof stack !== 'string' || !stack) return null;
+  const lines = stack.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line) continue;
+    if (line.includes('node_modules/scribbles')) continue;
+    if (line.includes('/scribbles/dist/')) continue;
+    if (line.includes('node:internal')) continue;
+    const re = /([A-Za-z0-9_.-]+\.(?:js|mjs|cjs)):(\d+)(?::(\d+))?/g;
+    let m;
+    let last = null;
+    while ((m = re.exec(line)) !== null) {
+      last = {
+        file: m[1],
+        line: parseInt(m[2], 10),
+        col: m[3] != null ? parseInt(m[3], 10) : 1,
+      };
+    }
+    if (last && Number.isFinite(last.line) && last.line > 0) return last;
+  }
+  return null;
+}
+
+/**
  * Extract source file location from a stack trace, resolving source maps when available
  * @param {string} stack - The stack trace string from an Error object
  * @returns {object} Object containing file, line, col, path, type, and args
@@ -59,13 +93,13 @@ function getSource(stack) {
   // Use source-map-support to resolve original file paths from source maps
   const mappedPosition = sourceMapSupport.mapSourcePosition({
     source: '/' + path,
-    line: parseInt(line),
-    column: parseInt(col) - 1  // Convert from 1-indexed to 0-indexed
+    line: parseInt(line, 10),
+    column: parseInt(col, 10) - 1  // Convert from 1-indexed to 0-indexed
   });
 
   // Use mapped values if source map resolution succeeded, otherwise use original
   const resolvedPath = mappedPosition.source !== '/' + path ? mappedPosition.source : path;
-  const resolvedLine = mappedPosition.source !== '/' + path ? mappedPosition.line : parseInt(line);
+  let resolvedLine = mappedPosition.source !== '/' + path ? mappedPosition.line : parseInt(line, 10);
   const resolvedCol = mappedPosition.source !== '/' + path ? mappedPosition.column + 1 : col;
 
   // Clean up path relative to appDir.
@@ -84,7 +118,15 @@ function getSource(stack) {
   let finalPath = resolvedPath.replace(/^\//, '');
   finalPath = finalPath.startsWith(appDir) ? finalPath.substr(appDir.length + 1) : "/" + finalPath;
 
-  const finalFile = decodeURIComponent(resolvedPath.split('/').pop().split(':')[0]);
+  let finalFile = decodeURIComponent(resolvedPath.split('/').pop().split(':')[0]);
+
+  if (!Number.isFinite(resolvedLine) || resolvedLine < 1) {
+    const walked = walkStackForJsLocation(stack);
+    if (walked) {
+      resolvedLine = walked.line;
+      finalFile = walked.file;
+    }
+  }
 
   return {
     type: originFile[0].split('at').pop().trim().split(" ")[0],

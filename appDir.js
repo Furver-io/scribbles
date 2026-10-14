@@ -26,17 +26,16 @@
  *   path passes through unchanged.
  */
 
-const fs = require('fs');
 const path = require('path');
 
 // Flags after which `process.argv[1]` is an argument of the evaluated script, not an entry file.
-const EVAL_FLAG = /^(-e|-p|-pe|--eval|--print)$/;
+const EVAL_FLAG = /^(-e|-p|-pe|--eval|--print)(=|$)/;
 
 /**
- * The entry file named on the command line, as the real path the loader will report: the
- * program may be started through a symlink (`node_modules/.bin`), through a folder (`node .`,
- * which runs the folder's index file) or with a name that does not exist (the run then fails
- * later, but a preload has already asked).
+ * The entry file named on the command line, as the real path the loader will report. Node's own
+ * resolver does the work, so a symlinked launcher (`node_modules/.bin`), a folder (`node .`,
+ * which runs the `main` of its package.json or its index file) and a name without extension
+ * all land where `require.main.filename` will land.
  *
  * @param {string} arg - `process.argv[1]`
  * @returns {string} absolute path of the entry file
@@ -44,11 +43,10 @@ const EVAL_FLAG = /^(-e|-p|-pe|--eval|--print)$/;
 function commandLineEntry(arg) {
   const resolved = path.resolve(arg);
   try {
-    const real = fs.realpathSync(resolved);
-    return fs.statSync(real).isDirectory() ? path.join(real, 'index.js') : real;
+    return require.resolve(resolved);
   } catch (err) {
     // Not on disk: a mistyped name, or a virtual path (the `/$bunfs/root/...` entry of a
-    // `bun build --compile` executable, which answers `existsSync` but not `realpathSync`).
+    // `bun build --compile` executable). The run fails or carries on without us anyway.
     return resolved;
   }
 }

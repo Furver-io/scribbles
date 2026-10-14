@@ -124,7 +124,7 @@ watches the modules it rewrites when the process was started with `--hot` or `--
 rewrites a small tick file that Bun does watch, so an edit to a logging module reloads the
 program (modules under `node_modules` are not watched). The tick lives in a private directory
 `scribbles-hot-<your user id>` (mode 0700, refused if it is not a real directory you own) under
-the real path of the OS temp directory, named after the working directory and entry file.
+the real path of the OS temp directory, named after the working directory and entry file. (Windows has no user ids or directory modes, so only that it is a real directory is checked there.)
 Nothing is watched or written in any other run. This works with or without the preload and for
 both ES modules and CommonJS modules. If the temp directory cannot be used, hot reload turns
 itself off with one line on stderr and the app runs normally (restart it to see edits).

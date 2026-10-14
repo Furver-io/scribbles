@@ -283,7 +283,7 @@ describe('Scenario: where the tick file lives', () => {
   });
 
   it('accepts the directory on a system without user ids (Windows reports a negative id)', () => {
-    const tick = locate(tmpFs({ ...private700, uid: 0 }), -1);
+    const tick = locate(tmpFs({ ...private700, uid: 0, mode: 0o40777 }), -1);
 
     expect(tick).toBe('/private/var/tmp/scribbles-hot--1/h17.cjs');
   });
@@ -306,6 +306,7 @@ describe('Scenario: the reloader a real hot run gets (real files, real temp dire
   it('creates a private tick in the temp directory, loads it, and rewrites it when a module changes', async () => {
     const module1 = path.join(tmp, 'lib.js');
     fs.writeFileSync(module1, 'one');
+    const watchSpy = jest.spyOn(fs, 'watch');
     const reloader = createDefaultReloader(true);
 
     reloader.ensureTick();
@@ -318,6 +319,9 @@ describe('Scenario: the reloader a real hot run gets (real files, real temp dire
       fs.writeFileSync(module1, `edit ${edit}`);
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
+
+    watchSpy.mock.results.forEach((result) => result.value.close());
+    watchSpy.mockRestore();
 
     expect(fs.statSync(path.join(fs.realpathSync(tmp), dir)).mode & 0o077).toBe(0);
     expect(before).toMatch(/^module\.exports = \d+\.1;\n$/);

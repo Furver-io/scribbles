@@ -140,6 +140,41 @@ describe('Scenario: other ways of starting the app name files the same way', () 
     }
   });
 
+  it('node --require scribbles/register . follows the main field of package.json', () => {
+    const ws = makeWorkspace({
+      'app/package.json': '{"main":"src/server.js"}',
+      'app/src/server.js': `${SETUP}\nrequire('./lib.js');\n`,
+      'app/src/lib.js': WORKER
+    });
+    try {
+      const result = runScenario({
+        runtime: 'node', args: ['--require', 'scribbles/register'], entry: '.', cwd: path.join(ws.dir, 'app')
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stdout.trim()).toBe('lib.js:3  total:6');
+    } finally {
+      ws.cleanup();
+    }
+  });
+
+  it('node --eval=... with a script argument still names modules relative to the working directory', () => {
+    const ws = makeWorkspace({ 'lib/x.js': WORKER });
+    try {
+      const result = runScenario({
+        runtime: 'node',
+        args: ['--require', 'scribbles/register', `--eval=${SETUP}\nrequire('./lib/x.js')`, '--'],
+        entry: '/etc/hosts',
+        cwd: ws.dir
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stdout.trim()).toBe('lib/x.js:3  total:6');
+    } finally {
+      ws.cleanup();
+    }
+  });
+
   it('an entry started through a symlink (a .bin launcher) names files relative to the real app', () => {
     const ws = makeWorkspace({ 'real/app/index.js': `${SETUP}\nrequire('./lib/x.js');\n`, 'real/app/lib/x.js': WORKER });
     try {

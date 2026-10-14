@@ -69,7 +69,8 @@ function locateTick({ fs, tmp, uid, key, join, hash }) {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const found = fs.lstatSync(dir);
   const owner = uid < 0 ? found.uid : uid;
-  if (!found.isDirectory() || found.uid !== owner || (found.mode & 0o077) !== 0) {
+  // Windows has no user ids and reports every directory as 0777, so only a real uid is checked.
+  if (!found.isDirectory() || found.uid !== owner || (uid >= 0 && (found.mode & 0o077) !== 0)) {
     throw new Error(`${dir} is not a private directory owned by this user`);
   }
   return join(dir, `${hash(key)}.cjs`);
@@ -166,7 +167,7 @@ function createDefaultReloader(hot) {
     locate: () => locateTick({
       fs,
       tmp: require('os').tmpdir(),
-      uid: require('os').userInfo().uid,
+      uid: process.getuid ? process.getuid() : /* istanbul ignore next -- Windows has no getuid */ -1,
       key: process.cwd() + '\0' + process.argv[1],
       join: require('path').join,
       hash: (text) => require('crypto').createHash('sha1').update(text).digest('hex').slice(0, 12)

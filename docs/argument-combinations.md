@@ -38,6 +38,9 @@ Three overloads:
 | Label + callback | `scribbles.trace('my-span', (spanId) => { ... })` |
 | Options + callback | `scribbles.trace({ spanLabel, traceId, tracestate, headers, url, path, query, params, method }, cb)` |
 
+The callback is called as `cb(spanId, { traceId, spanId })` and `trace()` returns whatever the callback
+returns (a returned promise is returned as-is, so async results and rejections reach the caller).
+
 **TraceOptions Properties** (all optional):
 - `spanLabel`: String to label this span
 - `traceId`: Custom trace ID or W3C traceparent format string (`00-<traceId>-<spanId>-<flag>`)

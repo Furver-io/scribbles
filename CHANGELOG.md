@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wraps the package in an ES module (`this` is `null`, not the global object). The ReadMe no
   longer claims a plain `bun build` keeps variable names; the plugin is how to get them.
 
+### Fixed
+
+- **`scribbles.trace(...)` now returns the callback's result.** It used to discard it and
+  return `undefined`, so async handlers lost their result and their rejections became
+  unhandled. The callback still receives the span id string first and now also a
+  `{ traceId, spanId }` context object second; typings return the callback's type.
+
 ---
 
 ## [2.0.1] — Integrator regression fixes (Bun CJS chain, trace-across-await)

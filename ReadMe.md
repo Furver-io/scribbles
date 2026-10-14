@@ -964,7 +964,20 @@ To use the trace system you only need to pass in a root function that acts as th
 ## trace function signature
 
 ```
-scribbles.trace([label/opt,]next_fu)
+scribbles.trace([label/opt,]next_fu)  // returns whatever next_fu returns
+```
+
+`next_fu` is called with two arguments: the span id string, `next_fu(spanId, { traceId, spanId })`.
+Code that only reads the first argument as the span id keeps working; the second is the
+`{ traceId, spanId }` context. `scribbles.trace` **returns exactly what `next_fu` returns**, so a
+synchronous handler's value reaches the caller, and an async handler's promise is returned as-is:
+you can `await` the result and its rejection reaches you instead of becoming unhandled.
+
+```js
+const reply = await scribbles.trace("job", async (spanId, { traceId }) => {
+  const data = await fetchData()   // logs written here carry the same trace id
+  return data
+})
 ```
 
 The first argument to can be an options object. Here you can specify a `spanLabel` to tag your entries, a`traceId` & the `tracestate` that are using in distributed tracing.

@@ -42,8 +42,11 @@ function createTrace(deps) {
   /**
    * Creates a trace context for distributed tracing
    * @param {Object|string|Function} opts - Trace options, label, or callback
-   * @param {Function} [next] - Callback to run within the trace context
-   * @returns {Object} Trace context with traceId, spanId, and run method
+   * @param {Function} [next] - Callback run within the trace context. It is
+   *   called with the span id string first (the long-documented argument) and
+   *   a `{ traceId, spanId }` context object second.
+   * @returns {*} Whatever `next` returns, untouched: a returned promise is
+   *   returned as-is, so async handlers' results and rejections reach the caller.
    */
   function trace(opts, next) {
 
@@ -106,7 +109,10 @@ function createTrace(deps) {
     // which the cls-hooked backend stored under that exact name. The
     // wrapping is what lets the migration be a drop-in replacement for
     // every existing callsite without a cascading rewrite.
-    store.run({ traceVals }, () => next(traceVals.spanId))
+    return store.run({ traceVals }, () => next(
+      traceVals.spanId,
+      { traceId: traceVals.traceId, spanId: traceVals.spanId }
+    ))
   } // END trace
 
   /**

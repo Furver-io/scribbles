@@ -404,26 +404,43 @@ type ExpressNextFunction = () => void;
 // =============================================================================
 
 /**
+ * Identifiers of the trace context a callback runs in
+ */
+interface TraceContext {
+    traceId: string;
+    spanId: string;
+}
+
+/**
+ * Callback run inside a trace context. Receives the span id string
+ * first and the `{ traceId, spanId }` context second.
+ */
+type TraceCallback<T> = (spanId: string, context: TraceContext) => T;
+
+/**
  * Trace function with headers method
  */
 interface TraceFunction {
     /**
      * Create a trace context and execute callback
      * @param callback - Function to execute within trace context
+     * @returns whatever the callback returns (a returned promise is returned as-is)
      */
-    (callback: (spanId: string) => void): void;
+    <T>(callback: TraceCallback<T>): T;
     /**
      * Create a labeled trace context
      * @param label - Span label
      * @param callback - Function to execute within trace context
+     * @returns whatever the callback returns (a returned promise is returned as-is)
      */
-    (label: string, callback: (spanId: string) => void): void;
+    <T>(label: string, callback: TraceCallback<T>): T;
     /**
      * Create a trace context with options
      * @param options - Trace options
      * @param callback - Function to execute within trace context
+     * @returns whatever the callback returns (a returned promise is returned as-is)
      */
-    (options: TraceOptions, callback: (spanId: string) => void): void;
+    <T>(options: TraceOptions, callback: TraceCallback<T>): T;
     /**
      * Get W3C trace context headers (must be called inside a trace)
      * @param customHeaders - Optional custom headers to merge

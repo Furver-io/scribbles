@@ -86,6 +86,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `import { get } from 'node:http'`, refreshed with `syncBuiltinESMExports`). Not coverable: a
   function copied out of `http` before scribbles loads, and Bun's ES named imports of built-ins;
   see the ReadMe.
+- **Global `fetch` now carries the trace** (Node 18+ and Bun). `fetch` does not go through
+  `http.request`, so a service calling downstream with `fetch` inside a trace sent no trace
+  headers at all. Every shape is handled: URL string, `URL`, `Request`, and `init.headers` as an
+  object, `Headers` or array of pairs; the caller's headers, body, method, signal and objects are
+  left as written, and a `traceparent` the caller sets wins. Bun's `fetch.preconnect` is kept. A
+  runtime with no global `fetch` still boots.
 
 ---
 

@@ -15,8 +15,8 @@
   * All logs with [`.trace(`](#trace-function-signature) will be **automatically** tagged, no matter where in your app it is.
   * use `traceTrigger` to filter a set of logs to only when there is a threshold is met or exceeded
   * Can trace incoming requests with the [w3c trace-context](https://www.w3.org/TR/trace-context/) headers
-  * With `headers` or `headersMapping` configured, scribbles will intercept outgoing `http` / `https` `request` and `get` calls made inside a trace and inject trace headers :sunglasses:
-  * Can **automatically** inject IDs into outgoing headers. Works with [axios](https://www.npmjs.com/package/axios#axios), [request](https://www.npmjs.com/package/request) & [http](https://nodejs.org/api/http.html#http_http_get_url_options_callback)/[https](https://nodejs.org/api/https.html#https_https_get_url_options_callback)
+  * With `headers` or `headersMapping` configured, scribbles will intercept outgoing `http` / `https` `request` and `get` calls and the global `fetch` made inside a trace and inject trace headers :sunglasses:
+  * Can **automatically** inject IDs into outgoing headers. Works with [axios](https://www.npmjs.com/package/axios#axios), [request](https://www.npmjs.com/package/request), global `fetch` & [http](https://nodejs.org/api/http.html#http_http_get_url_options_callback)/[https](https://nodejs.org/api/https.html#https_https_get_url_options_callback)
 * **More insight in your logs**
   * Git repository name
   * Current branch
@@ -1134,8 +1134,10 @@ app.listen(port, () => scribbles.status(`App is ready!`))
 Injection needs `headers` or `headersMapping` in the config, and a trace to propagate (a call made outside any `scribbles.trace(...)` leaves exactly as you wrote it).
 
 * `http.request`, `http.get`, `https.request` and `https.get`, with any call shape (`url`, `url, callback`, `url, options, callback`, `options, callback`). Headers you set yourself are kept, and if you set `traceparent` yourself yours wins.
+* The global `fetch` (Node 18+ and Bun): `fetch(url)`, `fetch(new URL(...))`, `fetch(request)` and `fetch(url, init)`, with `init.headers` as an object, a `Headers` or an array of pairs. Your method, body, signal and headers are untouched (as `fetch` itself does, `init.headers` replaces a `Request`'s headers), and your `Headers` / `Request` objects are not modified.
 * Anything you reach through the module **after** scribbles loads: `http.get(...)`, `const { get } = require('http')` below your `require('scribbles')`, and on Node `import { get } from 'node:http'`.
 * **Not covered:** a function copied out of `http` / `https` **before** scribbles loads (`const { request } = require('http')` above `require('scribbles')`) is the native function. Load scribbles first. Bun does not refresh `import { get } from 'node:http'` named imports; use `require` or call `http.get(...)` through the module there.
+* A `fetch` reference copied before scribbles loads (`const f = fetch` above `require('scribbles')`) is the native function, as above. A runtime with no global `fetch` simply gets the http wrappers.
 * Libraries that bundle their own HTTP client rather than calling Node's `http` (or `fetch`) are not covered either; pass `scribbles.trace.headers()` to them yourself.
 
 ---
@@ -1302,8 +1304,9 @@ Scribbles uses a modular architecture with the main entry point (`index.js`) ser
 | `trace.js` | Distributed tracing with W3C trace-context support |
 | `middleware.js` | Express middleware for trace context propagation |
 | `namespace.js` | CLS namespace for async trace correlation |
-| `hijacker.js` | HTTP/HTTPS request interception for header injection |
+| `hijacker.js` | HTTP/HTTPS and `fetch` interception for header injection |
 | `outbound-args.js` | Call-shape and header handling for the traced `http` / `https` wrappers |
+| `outbound-fetch.js` | Argument and header handling for the traced global `fetch` wrapper |
 | `stringify.js` / `stringifyImpl.js` | Value serialization (pretty-printed; `pretty.syntaxHighlight` defaults true with colors) |
 | `stringifySyntax.js` | Syntax color palettes and painters for the `{value}` column |
 | `status.js` | System status collection (CPU, memory, process) |

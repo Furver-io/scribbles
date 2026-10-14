@@ -17,6 +17,7 @@ scenarios/
 ├── named-exports.scenarios.test.js
 ├── node-cjs.scenarios.test.js
 ├── node-esm.scenarios.test.js
+├── outbound-fetch-runtimes.scenarios.test.js
 ├── outbound-get-load-order.scenarios.test.js
 ├── outbound-git-hash.scenarios.test.js
 ├── README.md
@@ -79,6 +80,10 @@ but against a `node app.js` child process.
 Node-ESM scenarios: `configured` (via `--import scribbles/register`)
 and `unconfigured` (warn-and-degrade). Skipped on Node < 20.6 where
 `module.register()` is not stable.
+
+### `outbound-fetch-runtimes.scenarios.test.js`
+Outgoing `fetch` on runtimes unlike the Jest process: no global fetch (boots,
+still traces `http`) and Bun (carries the trace, keeps `fetch.preconnect`).
 
 ### `outbound-get-load-order.scenarios.test.js`
 Load order for outgoing `http.get` / `request`: an ES module's

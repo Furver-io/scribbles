@@ -73,6 +73,7 @@ const https = require('https')
 const { syncBuiltinESMExports } = require('module')
 
 const { withTraceHeaders } = require('./outbound-args')
+const { fetchWithTraceHeaders } = require('./outbound-fetch')
 
 // Marker attached to every wrapper this file produces — see "Technical
 // context" in the file header for why we expose it.
@@ -108,8 +109,27 @@ function nativeOf(core, protocol, method) {
   return core[key]
 }
 
+// Registry key for the true native global `fetch`, kept on `globalThis`
+// for the same reason the http / https natives are kept on their modules.
+const FETCH_ORIGINAL = Symbol.for('scribbles.global.originalFetch')
+
 /**
- * Wraps http/https `request` and `get` to inject trace headers.
+ * Returns the TRUE native global `fetch`, caching it on `globalThis` the
+ * first time any boot of scribbles sees it, or `undefined` on a runtime
+ * with no global fetch (Node 16 and older).
+ *
+ * @returns {(Function|undefined)} the native `fetch`, if the runtime has one
+ */
+function nativeFetch() {
+  if (!globalThis[FETCH_ORIGINAL] && 'function' === typeof globalThis.fetch) {
+    globalThis[FETCH_ORIGINAL] = globalThis.fetch
+  }
+  return globalThis[FETCH_ORIGINAL]
+}
+
+/**
+ * Wraps http/https `request` and `get`, and the global `fetch`, to inject
+ * trace headers.
  *
  * Every invocation installs a fresh wrapper that closes over the given
  * `config`. The wrapper is idempotent w.r.t. the native originals:
@@ -126,6 +146,16 @@ function nativeOf(core, protocol, method) {
 function hijacker(scribbles, config) {
 
   /**
+   * Whether the live config currently asks for header injection. Read on
+   * every call so runtime config changes apply immediately.
+   *
+   * @returns {boolean} true when `headers` or `headersMapping` is set
+   */
+  function injecting() {
+    return Boolean(config && (config.headers || config.headersMapping))
+  }
+
+  /**
    * Creates a wrapper function for http/https request or get that injects
    * trace headers when the live config asks for them, or passes the
    * call through untouched otherwise.
@@ -137,13 +167,10 @@ function hijacker(scribbles, config) {
   function createWrapper(originalRequest) {
     /**
      * Drop-in replacement for `http.request` / `http.get` (and the https
-     * pair). Accepts
-     * the same `(url | options, [options | callback], [callback])`
-     * overload set Node exposes, normalises it, asks `scribbles.trace`
-     * for the header block to inject, and forwards to the original.
-     *
-     * When `config.headers` and `config.headersMapping` are both absent
-     * we short-circuit to the original function untouched, which is
+     * pair). Accepts the same `(url | options, [options | callback],
+     * [callback])` overload set Node exposes, normalises it, asks
+     * `scribbles.trace` for the header block to inject, and forwards to
+     * the original. With injection off it forwards untouched, which is
      * how "user disabled the feature at runtime" resolves to
      * zero-overhead passthrough.
      *
@@ -151,25 +178,45 @@ function hijacker(scribbles, config) {
      * @returns {import('http').ClientRequest}
      */
     function requestWrapper(...args) {
-
-      if (!config || (!config.headers && !config.headersMapping)) {
-        return originalRequest(...args)
-      }
-
-      return originalRequest(...withTraceHeaders(scribbles, args))
+      return originalRequest(...(injecting() ? withTraceHeaders(scribbles, args) : args))
     }
-    // Tag the wrapper so subsequent evaluations of this module can
-    // recognise an existing wrapper and avoid capturing it as "the
-    // original" (see the defensive branch in the module-level cache
-    // block above).
+    // Tag the wrapper so test infrastructure can tell it from a native
+    // function (see "Technical context" in the file header).
     requestWrapper[WRAPPER_MARKER] = true
     return requestWrapper
+  }
+
+  /**
+   * Creates the wrapper for the global `fetch`. Same gate as the http
+   * wrappers; the native function's own properties (Bun's
+   * `fetch.preconnect`) are carried over so code using them keeps working.
+   *
+   * @param {Function} originalFetch - The TRUE native `fetch`.
+   * @returns {Function} Wrapped fetch function.
+   */
+  function createFetchWrapper(originalFetch) {
+    /**
+     * Drop-in replacement for the global `fetch`.
+     *
+     * @param {...*} args - `(input, [init])` as for `fetch`
+     * @returns {Promise<Response>}
+     */
+    function fetchWrapper(...args) {
+      return originalFetch(...(injecting() ? fetchWithTraceHeaders(scribbles, args) : args))
+    }
+    fetchWrapper[WRAPPER_MARKER] = true
+    return Object.assign(fetchWrapper, originalFetch)
   }
 
   http.request = createWrapper(nativeOf(http, 'http', 'request'))
   http.get = createWrapper(nativeOf(http, 'http', 'get'))
   https.request = createWrapper(nativeOf(https, 'https', 'request'))
   https.get = createWrapper(nativeOf(https, 'https', 'get'))
+
+  const fetchOriginal = nativeFetch()
+  if (fetchOriginal) {
+    globalThis.fetch = createFetchWrapper(fetchOriginal)
+  }
 
   // ES modules that already imported `node:http` hold a snapshot of the
   // named exports (`import { get } from 'node:http'`); this refreshes it so

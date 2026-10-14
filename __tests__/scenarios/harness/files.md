@@ -7,7 +7,9 @@ Support utilities used by every scenario suite.
 ```
 harness/
 ├── host-package.cjs
+├── live.cjs
 ├── spawn.cjs
+├── workspace.cjs
 ├── README.md
 └── files.md
 ```
@@ -21,6 +23,11 @@ appear at the path `index.js` reads, then returns the JSON line the probe
 printed. Replaces the old scenarios that wrote a real file outside the repo,
 which other Jest workers could read mid-test.
 
+### `live.cjs`
+`startLive(runtime, args, cwd)` starts a long-running process (`bun --hot`,
+`bun --watch`) and exposes `until(pattern)` to wait for output and `stop()`
+to end it through its own handle.
+
 ### `spawn.cjs`
 Shared child-process spawner. Exposes two helpers:
   - `runScenario({ runtime, entry, args, cwd, env, timeoutMs })` —
@@ -33,3 +40,8 @@ Shared child-process spawner. Exposes two helpers:
 The `.cjs` extension keeps the module outside Jest's default
 `testMatch` discovery pattern, so it is never mistaken for a test
 file.
+
+### `workspace.cjs`
+`makeWorkspace(files)` builds a scratch application under the OS temp
+directory (never inside a git checkout) with a `node_modules/scribbles`
+symlink to the repo, returning its real path and a `cleanup()`.

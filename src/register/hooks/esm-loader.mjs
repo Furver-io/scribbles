@@ -53,6 +53,20 @@ const { transformSource } = require('../../parsing/transform.js');
 // variants for toolchains that feed Node native TS sources.
 const TRANSFORMABLE = /\.(m?js|c?js|ts|cts|mts|tsx|jsx)$/;
 
+// Folder the `file` names in log lines are relative to. Set by `initialize` from the main
+// thread; `undefined` (the transform's own default) when the loader is registered some other way.
+let appRoot;
+
+/**
+ * Node ESM `initialize` hook. Runs once in the loader thread with the `data` that
+ * `register.mjs` passed to `module.register`.
+ *
+ * @param {{ root: string }} [data] - `root`: absolute app folder for file names
+ */
+export function initialize(data) {
+  appRoot = data && data.root;
+}
+
 /**
  * Node ESM `load` hook. Called for every module request once the resolver
  * has picked a URL. Returns `{ format, source, shortCircuit }` per Node's
@@ -92,7 +106,7 @@ export async function load(url, context, nextLoad) {
   // so caching is handled by Node's own module loader layer rather than
   // ours — our job is just to return the rewritten text.
   const filename = fileURLToPath(url);
-  const transformed = transformSource(sourceText, filename);
+  const transformed = transformSource(sourceText, filename, appRoot);
 
   return { ...result, source: transformed };
 }

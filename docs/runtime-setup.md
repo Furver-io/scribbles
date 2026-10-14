@@ -98,6 +98,37 @@ Bun's own docs for preload semantics. If your project never uses
 uses `bun run` directly (i.e. only `bun test`), the top-level is
 optional — but there is no harm in setting both defensively.
 
+#### What Bun can and cannot rewrite
+
+Bun runs its **entry file** itself, outside the CommonJS extension hook, and a Bun runtime
+plugin can only hand back an ES module (returning anything else for a CommonJS file makes Bun
+skip the file silently). So the preload covers less than Node's does:
+
+| File | Variable names with the preload |
+| --- | --- |
+| `.mjs`, `.ts`, `.mts`, `.cts`, `.tsx`, `.jsx` (entry or imported) | yes (preload plugin) |
+| CommonJS `.js` / `.cjs` loaded with `require()` after scribbles loaded | yes (extension hook) |
+| The entry file, when it is `.js` or `.cjs` | **no** |
+| ES-module files named `.js` (`"type": "module"`) | **no** |
+
+Without a variable name the line still shows the right file and line number
+(`done 6` instead of `done r:6`). To get names, move the log calls out of the entry file into a
+module it requires, or name the file `.mjs` / `.ts`. On Node, `node --require scribbles/register
+app.js` does rewrite a CommonJS entry file; Bun has no equivalent.
+
+#### `bun --hot` and `bun --watch`
+
+Bun re-runs the program when a file it loaded changes, but it only watches files it read
+itself. Scribbles rewrites modules that log, and Bun does not watch those. Since 2.1.1 scribbles
+watches the modules it rewrites when the process was started with `--hot` or `--watch`, and
+rewrites a small tick file that Bun does watch, so an edit to a logging module reloads the
+program (modules under `node_modules` are not watched). The tick lives in a private directory
+`scribbles-hot-<your user id>` (mode 0700, refused if it is not a real directory you own) under
+the real path of the OS temp directory, named after the working directory and entry file.
+Nothing is watched or written in any other run. This works with or without the preload and for
+both ES modules and CommonJS modules. If the temp directory cannot be used, hot reload turns
+itself off with one line on stderr and the app runs normally (restart it to see edits).
+
 #### `bun build` (bundles)
 
 A bundle produced by `Bun.build` runs without the preload, so variable names have to be
@@ -119,16 +150,41 @@ The plugin rewrites `scribbles.<level>(...)` call sites in your own sources (nev
 plugin the bundle still starts and logs, but without variable names. The plugin is only
 available through `Bun.build`'s JavaScript API; the `bun build` command line cannot take plugins.
 
+The file names in the bundle's log lines are relative to the folder the build runs in (normally
+the project root); pass `scribblesPlugin({ root: '/path/to/project' })` when the build script
+runs from somewhere else. A file outside that folder keeps its absolute path.
+
+#### `bun build --compile` (single-file executables)
+
+An executable has no source files and no preload, so use the build plugin and nothing else
+changes:
+
+```js
+import scribblesPlugin from 'scribbles/bun-plugin';
+
+await Bun.build({
+  entrypoints: ['./src/main.ts'],
+  compile: { outfile: './service' },
+  plugins: [scribblesPlugin()],
+});
+```
+
+With the plugin the executable prints `src/worker.ts:5  total:6` (project-relative file, variable
+name next to its value) exactly like `bun run`. Without it the executable still logs, but the file
+name is the bundle's (`app.js:4209`) and variable names are missing. Scribbles reads git when the
+executable starts, from wherever it is started: in production pass the values with
+[`gitEnv`](../ReadMe.md#how-to-customise) or leave them empty (nothing is printed either way).
+
 Tooling that needs the same rewrite can import it directly:
 `import { transformSource } from 'scribbles/transform'`.
 
 ### Mixed CJS + ESM projects
 
 If your project imports some files as CJS and some as ESM in the same
-process, use both mechanisms together. `register.mjs` itself installs
-both the ESM loader (via `module.register` / `Bun.plugin`) *and* the CJS
-extension hook (via `Module._extensions`), so the ESM preload also
-covers any CJS files that get required transitively.
+process, use both mechanisms together. `register.mjs` installs the ESM
+loader (via `module.register` / `Bun.plugin`); the CJS extension hook
+(`Module._extensions`) is installed as soon as scribbles itself loads, so
+CJS files required after that point are covered too.
 
 If your main entry is CJS but you occasionally `import()` ESM modules,
 use `--require scribbles/register` instead of `--import` — this registers
@@ -188,7 +244,10 @@ Verify three things:
 2. The `scribbles.log(x)` call is in a file loaded AFTER scribbles itself
    (most common: your entry file calls `scribbles.log` — the entry file
    is already being parsed when scribbles installs, so it is not
-   transformed; move the call into a separate module).
+   transformed; move the call into a separate module, or on Node use
+   `--require scribbles/register`). On Bun an entry `.js`/`.cjs` file and
+   ES-module `.js` files are never rewritten, even with the preload; see
+   [What Bun can and cannot rewrite](#what-bun-can-and-cannot-rewrite).
 3. Literal values (`scribbles.log('a string')`) cannot have a variable
    name extracted because there is no variable to name.
 

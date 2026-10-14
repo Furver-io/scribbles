@@ -8,6 +8,8 @@ End-to-end scenario tests for Scribbles' multi-runtime support.
 scenarios/
 ├── bun-cjs.scenarios.test.js
 ├── bun-build.scenarios.test.js
+├── bun-compile.scenarios.test.js
+├── bun-hot-reload.scenarios.test.js
 ├── bun-esm.scenarios.test.js
 ├── bun-test.scenarios.test.js
 ├── colored-labels.scenarios.test.js
@@ -20,6 +22,8 @@ scenarios/
 ├── outbound-fetch-runtimes.scenarios.test.js
 ├── outbound-get-load-order.scenarios.test.js
 ├── outbound-git-hash.scenarios.test.js
+├── preload-file-names.scenarios.test.js
+├── quiet-startup.scenarios.test.js
 ├── README.md
 └── files.md
 ```
@@ -45,6 +49,16 @@ extraction.
 A `Bun.build` bundle starts and logs, and keeps variable names when the
 `scribbles/bun-plugin` build plugin is used. Skipped without Bun.
 
+### `bun-compile.scenarios.test.js`
+A `bun build --compile` executable names files and variables like `bun run`
+when the `scribbles/bun-plugin` build plugin is used, and still logs (with
+the bundle's name) without it. Skipped without Bun.
+
+### `bun-hot-reload.scenarios.test.js`
+`bun --hot` and `bun --watch` show the new code after an edit to a module
+that logs (ES modules via the preload plugin, CommonJS via the extension
+hook), stopping after the edit (no reload loop), also with a symlinked or unusable temp directory. Skipped without Bun.
+
 ### `bun-esm.scenarios.test.js`
 Bun-ESM scenarios: `configured` (via `bunfig.toml preload`) and
 `unconfigured` (warn-and-degrade behaviour).
@@ -53,6 +67,16 @@ Bun-ESM scenarios: `configured` (via `bunfig.toml preload`) and
 Bun test runner scenario. Exercises the separate `[test]` section in
 `bunfig.toml` preload configuration because `bun test` does not share
 preload state with `bun run`.
+
+### `preload-file-names.scenarios.test.js`
+With `node --require scribbles/register` (and `bun --preload`) each log line
+names its file relative to the app folder, including sub-folders, files
+outside the app and `node -e` sessions.
+
+### `quiet-startup.scenarios.test.js`
+Starting outside a git checkout prints nothing on stderr (and `gitEnv`
+supplies the git fields); a mistyped `LOG_LEVEL` stops the app with one
+plain line naming the value and the allowed levels. Node and Bun.
 
 ### `colored-labels.scenarios.test.js`
 A colored terminal prints `userName:` (in its own color) before each value.

@@ -157,6 +157,19 @@ and the `bun <file>` shorthand; the `[test]` section covers `bun test`.
 Setting both is the idiomatic full-coverage configuration. Detailed manual-setup instructions, troubleshooting, and
 edge cases are in [`docs/runtime-setup.md`](./docs/runtime-setup.md).
 
+What Bun can and cannot rewrite (Bun runs its entry file itself and a runtime plugin can only
+return ES modules, so this differs from Node):
+
+* Variable names appear for `.mjs`, `.ts`, `.tsx`, `.jsx` modules (the preload plugin) and for
+  CommonJS `.js` modules that are `require`d after scribbles loads.
+* They do **not** appear for the **entry file** when it is a `.js`/`.cjs` file, nor for ES-module
+  files named `.js`. Put the `scribbles.<level>(...)` calls in another module, or name the file
+  `.mjs` / `.ts`. (`node --require scribbles/register app.js` does cover a CommonJS entry on Node.)
+* `bun --hot` and `bun --watch` reload when you edit a module that logs, with or without the
+  preload.
+* A `bun build --compile` executable needs the `scribbles/bun-plugin` build plugin to keep file
+  and variable names; see [`docs/runtime-setup.md`](./docs/runtime-setup.md#bun-build---compile-single-file-executables).
+
 If you run Scribbles in an ESM context **without** the preload, it still
 works — you get correct file/line/col from stack traces — but automatic
 variable-name extraction is silently unavailable. A one-line warning will
@@ -329,7 +342,7 @@ There is a `config` that takes a configuration object.
 * **logLevel** [string] - *defaults: "debug"*
   * Report on this level and higher
   * Can use LOG_LEVEL from environment variables
-  * Must be one of `levels` (exact, case-sensitive). Anything else (`"warning"` with the default levels, `LOG_LEVEL=bogus`) makes `config()` throw an `Error` that names the bad value and lists the valid levels, and the previous setup is kept. It used to silence every log call, errors included. The environment variable is applied when scribbles loads, so a bad `LOG_LEVEL` makes `require('scribbles')` throw and the app stops at start-up instead of running without logs. If you change `levels`, pass a matching `logLevel` in the same call.
+  * Must be one of `levels` (exact, case-sensitive). Anything else (`"warning"` with the default levels, `LOG_LEVEL=bogus`) makes `config()` throw an `Error` that names the bad value and lists the valid levels, and the previous setup is kept. It used to silence every log call, errors included. The environment variable is applied when scribbles loads, so a bad `LOG_LEVEL` stops the app at start-up instead of running without logs: scribbles prints one line (`scribbles: Unknown logLevel "bogus". It must be one of the configured levels: ...`) and exits with status 1; a `try { require('scribbles') } catch {}` cannot catch it. The same applies to an unknown `logLevel` in your `package.json` `scribbles` block. Other start-up errors still throw to the caller. If you change `levels`, pass a matching `logLevel` in the same call.
 * **levels** [array] - *defaults: `["error", "warn", "log", "info", "debug"]`*
   * Messages will be filtered from the `logLevel` to the start of the array
   * These log levels will also be available as functions on scribbles
@@ -347,6 +360,7 @@ There is a `config` that takes a configuration object.
   * `hash`: attribute name of git short hash
   * `repo`: attribute name of git repository name
   * `branch`: attribute name of git branch
+  * Scribbles reads the repo, branch and commit from git when it starts. Outside a git checkout (or without the `git` command) it prints nothing and leaves them empty unless `gitEnv` supplies them.
 * **pretty** [Object]
   * `inlineCharacterLimit`[number]: Will inline values up to this length. ~ In Dev Mode, this will be set to the width of your terminal **or** _default to_ `80`
   * `indent`[string]: preferred indentation. _Defaults  `"  "` ~ 2 spaces_

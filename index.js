@@ -30,6 +30,7 @@ const { createTrace } = require('./src/tracing/trace');
 const { createMiddleware } = require('./src/tracing/middleware');
 const { createConfig } = require('./src/core/scribblesConfig');
 const register = require('./src/register');
+const { UNKNOWN_LOG_LEVEL } = require('./src/core/logLevelCheck');
 
 let packageJson_scribbles = {}
 
@@ -151,7 +152,19 @@ resirvedFnNames.push('timerEnd');
 // Reserve the group namespace (issue #13).
 resirvedFnNames.push('group');
 
-scribbles.config(packageJson_scribbles)
+// Start-up configuration comes from the environment (`LOG_LEVEL`, `NODE_ENV`) and from the host
+// package.json `scribbles` block. An unknown log level there must stop the app, but an uncaught
+// throw from here would print the failing source line first: in the published, minified bundle
+// that is hundreds of kilobytes of code before the message. Say it in one plain line and exit
+// instead (so `try { require('scribbles') } catch {}` cannot catch it). Any other start-up
+// error, and every later `config()` call from user code, throws to its caller as before.
+try {
+  scribbles.config(packageJson_scribbles)
+} catch (err) {
+  if (err.code !== UNKNOWN_LOG_LEVEL) throw err;
+  process.stderr.write('scribbles: ' + err.message + '\n');
+  process.exit(1);
+}
 
 if (config.hijack !== false) {
   hijacker(scribbles, config)

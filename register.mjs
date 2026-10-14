@@ -75,6 +75,7 @@ import { createRequire } from 'node:module';
 // the package is installed.
 const require = createRequire(import.meta.url);
 const { transformSource } = require('./src/parsing/transform.js');
+const hotReload = require('./src/register/hot-reload.js');
 
 // Flag that `src/register/index.js` consults to decide whether to emit
 // the ESM-preload-missing warning. Set FIRST so any downstream code that
@@ -117,6 +118,8 @@ if (typeof globalThis.Bun !== 'undefined') {
     setup(build) {
       build.onLoad({ filter: TRANSFORMABLE }, async (args) => {
         const source = await globalThis.Bun.file(args.path).text();
+        // Bun does not watch files a plugin supplies; under --hot / --watch we do.
+        hotReload.watch(args.path);
         const transformed = transformSource(source, args.path);
         // Match the loader to the original file extension so Bun's own
         // TS/JSX compilation (if applicable) runs on our output
@@ -144,5 +147,12 @@ if (typeof globalThis.Bun !== 'undefined') {
   // pre-20.6 Node running an ESM entry gets a clear error from the
   // runtime, and the README directs them to upgrade or fall back to
   // the CJS path (which has no preload requirement).
-  nodeEsmRegister('./src/register/hooks/esm-loader.mjs', import.meta.url);
+  //
+  // The loader runs in a worker thread that knows nothing about the entry file, so the app
+  // root (computed here, where `process.argv` is the real command line) is handed over as
+  // `data`; the worker's `initialize` hook receives it. Log lines then name files relative to
+  // the entry file's folder, as on the CJS path.
+  nodeEsmRegister('./src/register/hooks/esm-loader.mjs', import.meta.url, {
+    data: { root: '/' + require('./appDir.js') }
+  });
 }

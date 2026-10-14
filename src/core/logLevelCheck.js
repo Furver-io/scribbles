@@ -19,6 +19,8 @@
  * - Matching is exact and case-sensitive, like the level names themselves.
  */
 
+const UNKNOWN_LOG_LEVEL = 'SCRIBBLES_UNKNOWN_LOG_LEVEL';
+
 /**
  * Throws when `logLevel` is not in `levels`.
  * @param {string[]} levels - Effective level names, highest priority first.
@@ -27,10 +29,13 @@
  */
 function assertKnownLogLevel(levels, logLevel) {
   if (-1 === levels.indexOf(logLevel)) {
-    throw new Error(`Unknown logLevel "${logLevel}". It must be one of the configured levels: `
+    const error = new Error(`Unknown logLevel "${logLevel}". It must be one of the configured levels: `
       + `${levels.join(', ')}. Check config({ logLevel }), the LOG_LEVEL environment variable `
       + 'and config({ levels }).');
+    // Lets start-up recognise this deliberate refusal (see `index.js`) without matching text.
+    error.code = UNKNOWN_LOG_LEVEL;
+    throw error;
   }
 }
 
-module.exports = { assertKnownLogLevel };
+module.exports = { assertKnownLogLevel, UNKNOWN_LOG_LEVEL };

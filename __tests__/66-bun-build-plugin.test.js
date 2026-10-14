@@ -103,4 +103,22 @@ describe('Scenario: scribbles Bun build plugin', () => {
     expect(bun.filter.test('a.tsx')).toBe(true);
     expect(bun.filter.test('a.js')).toBe(false);
   });
+
+  it('names files in the log lines relative to the root the team gives it', async () => {
+    const bun = registerWithBun({ root: dir });
+    const file = write('src/service.ts', "scribbles.log('user', userName);\n");
+
+    const loaded = await bun.load(file);
+
+    expect(loaded.contents).toContain('file:"src/service.ts"');
+  });
+
+  it('names files relative to the build\'s working directory when no root is given', async () => {
+    const bun = registerWithBun();
+    const inside = path.join(process.cwd(), '__tests__', 'scenarios', 'fixtures', 'basic-logging', 'lib.js');
+    const outside = write('elsewhere.ts', "scribbles.log('user', userName);\n");
+
+    expect((await bun.load(inside)).contents).toContain('file:"__tests__/scenarios/fixtures/basic-logging/lib.js"');
+    expect((await bun.load(outside)).contents).toContain(`file:"${outside}"`);
+  });
 });

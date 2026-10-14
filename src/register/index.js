@@ -57,6 +57,7 @@ const { isInstalled, markInstalled } = require('./install-flag');
 const { install: installCjsHook } = require('./hooks/cjs-extensions');
 const { transformSource } = require('../parsing/transform');
 const { warnOncePerBoot, ESM_PRELOAD_MISSING } = require('./warn');
+const hotReload = require('./hot-reload');
 
 // Same key the ESM preload (register.mjs) sets. Symbol.for ensures both
 // realms see the same flag even when Scribbles is loaded multiple times.
@@ -104,6 +105,10 @@ function detectRuntime() {
  * `index.js` on library load.
  */
 function register() {
+  // Runs on every (re)load of the library, which is what keeps the tick in the program
+  // `bun --hot` / `bun --watch` rebuilds. A no-op everywhere else.
+  hotReload.ensureTick();
+
   if (!isInstalled()) {
     // CJS is the only path we can install from here. Node-CJS and
     // Bun-CJS both honour Module._extensions, so one call delivers

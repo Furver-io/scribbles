@@ -1,6 +1,6 @@
 {
   "name": "scribbles",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Scribbles is a log and tracing lib for Node.js and Bun with automatic variable-name extraction, distributed tracing, and structured output",
   "files": [
     "dist/",
@@ -56,7 +56,7 @@
     "test:watch": "jest --watch --runInBand",
     "test:cover": "jest --coverage --no-cache --detectOpenHandles",
     "test:subprocess": "nyc --silent node __tests__/subprocess/run-all.js",
-    "test:full-coverage": "rm -rf .nyc_output coverage && jest --coverage --no-cache && nyc --silent jest --no-cache __tests__/scenarios && nyc --silent --clean=false node __tests__/subprocess/run-all.js && cp coverage/coverage-final.json .nyc_output/jest-coverage.json && nyc report --reporter=text --reporter=json --reporter=lcov --report-dir=coverage",
+    "test:full-coverage": "npm run build && rm -rf .nyc_output coverage && jest --coverage --no-cache && nyc --silent jest --no-cache __tests__/scenarios && nyc --silent --clean=false node __tests__/subprocess/run-all.js && cp coverage/coverage-final.json .nyc_output/jest-coverage.json && nyc report --reporter=text --reporter=json --reporter=lcov --report-dir=coverage",
     "release": "bash scripts/publish.sh",
     "prepublishOnly": "npx esbuild index.js --bundle --minify --sourcemap --platform=node --external:../../package.json --outfile=dist/scribbles.js"
   },

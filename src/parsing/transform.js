@@ -59,16 +59,15 @@
  *   file transformed AFTER the config call. The reserved logging variants
  *   `timer` / `timerEnd` / `group*` are injected via the same `.at` mechanism
  *   by `scribblesConfig.js` and do not need to appear in `levels2check` here.
- * - Filenames are normalised to start with `/` relative to `appDir` so the
- *   emitted `file:"..."` string is stable across machines and invocation cwd.
- *   When the filename starts outside `appDir` (e.g. a file from a dependency
- *   that happens to also use Scribbles), the raw filename is prefixed with
- *   `/` so runtime stack frames still look reasonable.
+ * - Filenames are made relative to the app root (`src/utils/appRelativePath.js`)
+ *   so the emitted `file:"..."` string is stable across machines and invocation
+ *   cwd. A file outside the root (e.g. a dependency that also uses Scribbles)
+ *   keeps its absolute path.
  */
 
 'use strict';
 
-const appDir = require('../../appDir');
+const { appRelativePath } = require('../utils/appRelativePath');
 const config = require('../core/config');
 const { loadArgNames } = require('./args-parser');
 
@@ -81,17 +80,16 @@ const { loadArgNames } = require('./args-parser');
  *        carried as a regular character and does not affect line numbering).
  * @param {string} filename - Absolute filename. Used to derive the `file`
  *        metadata emitted at each call site.
+ * @param {string} [root] - Absolute app root the `file` metadata is relative to.
+ *        Defaults to the folder of the process entry file.
  * @returns {string} The rewritten source. Functionally identical to the input
  *        at runtime for any non-matching line; matching lines are replaced
  *        with equivalent code that additionally carries call-site metadata.
  */
-function transformSource(source, filename) {
-  // Compute the user-facing `file` string: relative-to-appDir when the file
-  // lives inside the user's project, otherwise an absolute-looking path
-  // (prefixed with `/` so downstream UIs render it consistently).
-  const path = filename.startsWith("/" + appDir)
-    ? filename.substr(appDir.length + 2)
-    : "/" + filename;
+function transformSource(source, filename, root) {
+  // Compute the user-facing `file` string: relative-to-the-app-root when the file
+  // lives inside the user's project, otherwise its absolute path.
+  const path = appRelativePath(filename, root);
 
   // Include `status` alongside the configured log levels because it accepts
   // the same `.at(metadata, ...)` shape and users can legitimately call it as
@@ -151,7 +149,7 @@ function transformSource(source, filename) {
       // metadata packet and the full, untouched argument list.
       return line.replace(
         find,
-        `scribbles.${level}.at({file:"${path}",line:${index + 1},col:${indexOf},args:[${loadArgNames(getNextChar)}]},`
+        `scribbles.${level}.at({file:${JSON.stringify(path)},line:${index + 1},col:${indexOf},args:[${loadArgNames(getNextChar)}]},`
       );
     }
 

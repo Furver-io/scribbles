@@ -20,6 +20,10 @@ now?" companion.
    - [Variable names don't appear in output (`user.name:alice` missing)](#variable-names-dont-appear-in-output-usernamealice-missing)
    - [Bun: "Expected CommonJS module to have a function wrapper"](#bun-expected-commonjs-module-to-have-a-function-wrapper)
    - [Bun: `traceId` is lost after the first `await`](#bun-traceid-is-lost-after-the-first-await)
+   - [Bun: editing a file does not reload under `bun --hot` / `bun --watch`](#bun-editing-a-file-does-not-reload-under-bun---hot--bun---watch)
+   - [File names in logs look wrong](#file-names-in-logs-look-wrong)
+   - [Start-up prints `fatal: not a git repository`](#start-up-prints-fatal-not-a-git-repository)
+   - [Start-up fails with `scribbles: Unknown logLevel "..."`](#start-up-fails-with-scribbles-unknown-loglevel-)
    - [`SCRIBBLES_NOT_REGISTERED` thrown at boot](#scribbles_not_registered-thrown-at-boot)
    - [TypeError: `scribbles.config is not a function` (ESM only)](#typeerror-scribblesconfig-is-not-a-function-esm-only)
 4. [Configuration patterns that break at scale](#configuration-patterns-that-break-at-scale)
@@ -167,7 +171,13 @@ Work through this checklist in order:
    *loaded*. The file that BOOTS scribbles (the main entry on Node
    CJS) is already being parsed when scribbles installs, so the
    transform never gets a chance to rewrite it. Move the call into a
-   separate module and require that module from your entry.
+   separate module and require that module from your entry. On Node
+   you can instead start with `node --require scribbles/register app.js`.
+   **On Bun** the entry file, when it is `.js` or `.cjs`, and ES-module
+   files named `.js` are never rewritten, even with the preload (Bun runs
+   the entry itself and a runtime plugin can only return ES modules): move
+   the calls to a module the entry `require`s, or name the file `.mjs` /
+   `.ts`. See [What Bun can and cannot rewrite](./runtime-setup.md#what-bun-can-and-cannot-rewrite).
 3. **Check the argument shape.** A literal value has no variable name
    to extract: `scribbles.log('a string')` will always emit `... a string`
    — there is no `varName:` prefix because no variable was involved.
@@ -265,6 +275,43 @@ correctly across every Promise continuation.
 There is no setup-side workaround for the pre-v2.0.1 version of this
 issue short of restructuring every handler to avoid `await` inside
 `scribbles.trace(...)` — which is impractical for any real service.
+
+### Bun: editing a file does not reload under `bun --hot` / `bun --watch`
+
+**Symptom**: you edit a module that calls `scribbles.<level>(...)` and the
+running process keeps the old code. Modules that never log reload fine.
+
+**Cause**: scribbles rewrites those modules (to add variable names) and Bun
+only watches files it read itself. **Fixed in 2.1.1**: when the process was
+started with `--hot` or `--watch` scribbles watches the modules it rewrites
+and nudges Bun to reload. On 2.1.0 and earlier restart the process by hand, or
+run without `--hot` while editing logging code. Details in
+[runtime-setup.md](./runtime-setup.md#bun---hot-and-bun---watch).
+
+### File names in logs look wrong
+
+* **`//private/tmp/...` or a path with its first characters missing** (seen
+  with `node --require scribbles/register` and with `Bun.build` plugin
+  bundles on 2.1.0 and earlier): fixed in 2.1.1. File names are now relative
+  to the folder of your entry file (the working directory for `node -e`; the
+  build's working directory, or `scribblesPlugin({ root })`, for bundles).
+* **The name of a bundle or executable (`app.js:4209`)**: the code was
+  bundled without the build plugin. Add `scribbles/bun-plugin` to
+  `Bun.build`, including for `compile` executables.
+
+### Start-up prints `fatal: not a git repository`
+
+Scribbles asked git for the commit hash at start and git complained on
+stderr. Fixed in 2.1.1: nothing is printed outside a checkout or without the
+`git` command; the repo, branch and commit stay empty unless `gitEnv` supplies
+them.
+
+### Start-up fails with `scribbles: Unknown logLevel "..."`
+
+`LOG_LEVEL` (or the `scribbles` block of your `package.json`) names a level
+that is not in `levels`. The message names the bad value and lists the allowed
+levels, and the process exits with status 1 (before 2.1.1 it also printed
+lines of source code first). Fix the value, for example `LOG_LEVEL=warn`.
 
 ### `SCRIBBLES_NOT_REGISTERED` thrown at boot
 
@@ -402,7 +449,8 @@ node probe.js
 | -------------------------------------------- | ------- | -------------------------------------------- |
 | Node CJS via `require('scribbles')`          | 8.5.0   | **None** — works out of the box              |
 | Node ESM via `import scribbles from 'scribbles'` | 20.6 | `--import scribbles/register` on `node`      |
-| Bun (runtime + `bun test` + ESM)             | 1.0     | `preload = ["scribbles/register"]` in `bunfig.toml` (also inside a `[test]` section) |
+| Bun (runtime + `bun test` + ESM)             | 1.0     | `preload = ["scribbles/register"]` in `bunfig.toml` (also inside a `[test]` section); no variable names in a `.js` entry file |
+| `bun build` / `--compile` bundles            | 1.0     | `plugins: [scribblesPlugin()]` from `scribbles/bun-plugin` |
 
 ESM users on Node < 20.6 will see `module.register is not a function`
 from the preload — upgrade Node or use the CJS path.

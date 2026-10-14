@@ -75,6 +75,7 @@
 
 const fs = require('fs');
 const Module = require('module');
+const hotReload = require('../hot-reload');
 
 // Per-extension ordered list of transforms. Shared across all Scribbles
 // copies in the process via globalThis so the hook chain is coherent even
@@ -146,7 +147,10 @@ function install(transformFn) {
         }
 
         // Transform path: pipe the source through every registered
-        // transform and hand the final string to module._compile.
+        // transform and hand the final string to module._compile. Under `bun --hot` /
+        // `bun --watch` Bun does not watch a file compiled this way, so we do (see
+        // `../hot-reload.js`).
+        hotReload.watch(filename);
         let out = source;
         for (const fn of stacks[ext]) {
           out = fn(out, filename);

@@ -6,6 +6,7 @@ Shared utility functions.
 
 ```
 utils/
+├── appRelativePath.js
 ├── checkNodeVer.js
 ├── helpers.js
 ├── regexUtils.js
@@ -13,6 +14,10 @@ utils/
 ```
 
 ## Files
+
+### `appRelativePath.js`
+Turns an absolute source file name into the `file` text a log line shows:
+relative to the app root when inside it, absolute otherwise.
 
 ### `checkNodeVer.js`
 Validates Node.js version compatibility.

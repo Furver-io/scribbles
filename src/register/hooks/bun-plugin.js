@@ -34,10 +34,13 @@ const LOADERS = { js: 'js', mjs: 'js', cjs: 'js', jsx: 'jsx', ts: 'ts', mts: 'ts
  *
  * @param {Object} [options]
  * @param {RegExp} [options.filter] - Which module paths to consider (default: JS/TS/JSX files).
+ * @param {string} [options.root] - Folder the log lines' file names are relative to (default:
+ *        the working directory of the build).
  * @returns {{ name: string, setup: function(Object): void }} plugin for `Bun.build({ plugins })`
  */
 function scribblesBunPlugin(options) {
   const filter = (options && options.filter) || DEFAULT_FILTER;
+  const root = (options && options.root) || process.cwd();
   return {
     name: 'scribbles-transform',
     setup(build) {
@@ -46,7 +49,7 @@ function scribblesBunPlugin(options) {
         const source = await fs.promises.readFile(args.path, 'utf8');
         if (source.indexOf('scribbles.') < 0) return undefined;
         const extension = /\.([a-z]+)$/.exec(args.path)[1];
-        return { contents: transformSource(source, args.path), loader: LOADERS[extension] };
+        return { contents: transformSource(source, args.path, root), loader: LOADERS[extension] };
       });
     }
   };

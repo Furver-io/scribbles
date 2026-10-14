@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-10-14
+
+### Fixed
+
+- **File names in log lines are right under a preload and in bundles.** With
+  `node --require scribbles/register` (and with `Bun.build` bundles made with the build
+  plugin) the file name came out as a broken absolute path (`//private/tmp/...app/worker.js`,
+  or with its first characters cut off). Scribbles worked out "the app folder" from where
+  scribbles itself was installed because the entry file is not known yet while a preload runs.
+  It now uses the entry file given on the command line, resolved to its real path (a symlinked
+  launcher, `node .`), and the working directory for `node -e`. The Node ESM loader (`--import`)
+  is told the app folder by the main thread, so it no longer depends on where it was started.
+  A file in a folder that only starts like the app folder (`app-shared` next to `app`) is no
+  longer treated as inside the app, and a file outside the app is named by its absolute path
+  with a single leading slash. `scribblesPlugin({ root })` and `transformSource(source,
+  filename, root)` take the folder the names are relative to; the plugin defaults to the
+  build's working directory.
+- **No more `fatal: not a git repository` on every start.** Scribbles asks git for the repo,
+  branch and commit when it loads; git's own error message went straight to your stderr when
+  the app runs outside a checkout (a container, an extracted release) or without the `git`
+  command. Nothing is printed now; the values stay empty unless `gitEnv` supplies them.
+- **A mistyped `LOG_LEVEL` fails with one plain line.** The app still stops at start-up, but
+  the output is now `scribbles: Unknown logLevel "bogus". It must be one of the configured
+  levels: error, warn, log, info, debug. ...` and exit status 1, instead of that message
+  after lines of the failing source file (hundreds of kilobytes of minified code in the
+  published bundle). The process exits (a `try { require('scribbles') } catch {}` cannot catch it);
+  the same goes for an unknown `logLevel` in the `package.json` `scribbles` block. Every other
+  start-up error, and `config()` called from your own code, still throws to its caller.
+- **`bun --hot` and `bun --watch` reload when you edit a module that logs.** Bun does not
+  watch files that scribbles rewrites, so those edits were ignored (modules that never log
+  were fine). In a hot or watch run scribbles now watches the modules it rewrites and nudges
+  Bun to reload them, with or without the `scribbles/register` preload. Nothing is watched or
+  written in any other run, and a problem (unwritable temp directory, too many open files)
+  turns the feature off with one line on stderr instead of stopping the app.
+- **`bun build --compile` executables keep file and variable names** when built with the
+  `scribbles/bun-plugin` build plugin: the file names were broken absolute paths (see the
+  first item) and the executable printed git's error on every start (second item). Without the
+  plugin an executable still logs but names the bundle and drops variable names; the docs now
+  say so and show the `compile` setup.
+
+### Documented
+
+- Under Bun the entry file, when it is a `.js` or `.cjs` file, and ES-module files named `.js`
+  never get variable names, even with the preload: Bun runs the entry itself, and a Bun runtime
+  plugin can only return ES modules (a CommonJS file handed back by a plugin is silently not
+  run). `ReadMe.md`, `docs/runtime-setup.md` and `docs/troubleshooting.md` list what is covered
+  and the workarounds (move the calls to a required module, or name the file `.mjs` / `.ts`).
+
 ## [2.1.0] - 2026-10-14
 
 ### Added

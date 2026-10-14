@@ -11,6 +11,7 @@ register/
 │   ├── cjs-extensions.js
 │   └── esm-loader.mjs
 ├── files.md
+├── hot-reload.js
 ├── index.js
 ├── install-flag.js
 ├── README.md
@@ -24,6 +25,12 @@ Per-runtime installers that each adapt the same shared `transformSource`
 function to the mechanism the runtime provides. See `hooks/files.md`.
 
 ## Files
+
+### `hot-reload.js`
+Keeps `bun --hot` / `bun --watch` reloading when a module scribbles rewrites
+changes. Bun does not watch files a plugin or the CommonJS extension hook
+hands it, so in a hot run this watches those modules and rewrites a tick
+file Bun does watch. Does nothing outside Bun's hot and watch modes.
 
 ### `index.js`
 The single entry point. Exposes `register()` — an idempotent function

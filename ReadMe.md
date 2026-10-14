@@ -328,6 +328,7 @@ There is a `config` that takes a configuration object.
 * **logLevel** [string] - *defaults: "debug"*
   * Report on this level and higher
   * Can use LOG_LEVEL from environment variables
+  * Must be one of `levels` (exact, case-sensitive). Anything else (`"warning"` with the default levels, `LOG_LEVEL=bogus`) makes `config()` throw an `Error` that names the bad value and lists the valid levels, and the previous setup is kept. It used to silence every log call, errors included. The environment variable is applied when scribbles loads, so a bad `LOG_LEVEL` makes `require('scribbles')` throw and the app stops at start-up instead of running without logs. If you change `levels`, pass a matching `logLevel` in the same call.
 * **levels** [array] - *defaults: `["error", "warn", "log", "info", "debug"]`*
   * Messages will be filtered from the `logLevel` to the start of the array
   * These log levels will also be available as functions on scribbles

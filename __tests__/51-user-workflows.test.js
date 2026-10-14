@@ -512,6 +512,7 @@ describe('User Workflow: Headers Mapping', () => {
             stdOut: null,
             dataOut: (data) => logs.push(data),
             logLevel: 'debug',
+            levels: ['error', 'warn', 'log', 'info', 'debug'],
             headersMapping: {
                 'x-trace-id': 'x-request-id'
             }
@@ -546,6 +547,7 @@ describe('User Workflow: Headers Mapping', () => {
             stdOut: null,
             dataOut: (data) => logs.push(data),
             logLevel: 'debug',
+            levels: ['error', 'warn', 'log', 'info', 'debug'],
             headersMapping: {
                 'x-correlation-id': ['x-trace-id', 'x-request-id', 'x-correlation']
             }

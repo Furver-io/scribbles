@@ -10,6 +10,7 @@ const { defaultColorScheme, colorblindScheme, shouldEnableColors } = require('..
 const { mergeResolvedSyntaxScheme } = require('../formatting/stringifySyntax');
 const { applyProsePrettyConfig } = require('./scribblesConfigProse');
 const { assertStdOutCoversLevels } = require('./sinks');
+const { assertKnownLogLevel } = require('./logLevelCheck');
 
 /**
  * Default visible caption for `groupEnd` when the caller does not pass an override string.
@@ -48,13 +49,12 @@ function createConfig(deps) {
       }) // END forEach
     } // END if
 
-    // Reject an stdOut object that cannot print an enabled level BEFORE any state changes,
-    // so a rejected call leaves the previous working setup in place.
-    assertStdOutCoversLevels(
-      'stdOut' in opts ? opts.stdOut : config.stdOut,
-      opts.levels || config.levels,
-      'logLevel' in opts ? opts.logLevel : config.logLevel
-    )
+    // Reject bad option combinations BEFORE any state changes, so a rejected call leaves the
+    // previous working setup in place. They are checked against the values this call produces.
+    const nextLevels = opts.levels || config.levels
+    const nextLogLevel = 'logLevel' in opts ? opts.logLevel : config.logLevel
+    assertKnownLogLevel(nextLevels, nextLogLevel)
+    assertStdOutCoversLevels('stdOut' in opts ? opts.stdOut : config.stdOut, nextLevels, nextLogLevel)
 
     // Clean config - remove old log level functions
     config.levels.forEach((logLevel) => {

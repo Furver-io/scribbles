@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of each destination function is written once to `console.error`. A `stdOut` object with no
   function for an enabled level is now rejected by `config()` (`<level> was not found on stdOut`)
   instead of throwing from a later log call. See ReadMe "When a destination fails".
+- **An unknown `logLevel` no longer silently disables every log call.** `config({ logLevel: 'warning' })`
+  with the default levels, or `LOG_LEVEL=bogus`, used to turn all logging (errors included) into
+  no-ops. `config()` now throws an `Error` naming the bad level and the valid ones and keeps the
+  previous setup. Because `LOG_LEVEL` is applied when scribbles loads, a bad value makes
+  `require('scribbles')` throw (fail fast at start-up). Passing new `levels` without a matching
+  `logLevel` is rejected the same way.
 
 ---
 

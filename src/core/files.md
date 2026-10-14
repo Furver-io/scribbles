@@ -7,6 +7,7 @@ Core logging functionality for scribbles.
 ```
 core/
 ├── config.js
+├── logLevelCheck.js
 ├── scribble.js
 ├── scribbleStdOutFormat.js
 ├── sinks.js
@@ -18,6 +19,9 @@ core/
 
 ### `config.js`
 Default configuration values for scribbles.
+
+### `logLevelCheck.js`
+`assertKnownLogLevel`: `config()` throws a clear Error when `logLevel` (option or `LOG_LEVEL` env) is not one of `levels`, instead of silently disabling every log call.
 
 ### `scribble.js`
 Core scribble logging function that creates structured log entries; delegates final `body.toString()` line assembly to `scribbleStdOutFormat.js`.

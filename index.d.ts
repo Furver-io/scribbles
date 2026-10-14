@@ -103,7 +103,7 @@ interface ScribblesConfig {
     time?: string;
     /** Array of log levels from highest to lowest priority */
     levels?: string[];
-    /** Minimum log level to output (default: "debug") */
+    /** Minimum log level to output (default: "debug"). Must be one of `levels`, otherwise `config()` throws; a bad `LOG_LEVEL` environment variable makes `require` throw. */
     logLevel?: string;
     /** Log level that triggers trace flushing */
     traceTrigger?: string;

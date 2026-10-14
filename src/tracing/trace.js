@@ -52,7 +52,7 @@ function createTrace(deps) {
    */
   function trace(opts, next) {
 
-    let traceVals = { logs: [] };
+    const traceVals = { logs: [] };
 
     if ('object' === typeof opts) {
       traceVals.headers = opts.headers;
@@ -66,7 +66,9 @@ function createTrace(deps) {
       if (opts.traceId) {
         if (regxTraceparent.test(opts.traceId)) {
           const [version, traceId, parentId, flag] = opts.traceId.split('-')
-          traceVals = { version, traceId, parentId, flag }
+          // merge, never replace: `logs` (traceTrigger buffer), `headers` and the
+          // request fields set above must survive
+          Object.assign(traceVals, { version, traceId, parentId, flag })
         } else {
           traceVals.traceId = opts.traceId
         }

@@ -574,6 +574,7 @@ scribbles.log("hello world")
    },
    trace:{
       traceId: "...",
+      parentId: "...", // caller's span id, when traceId was a full traceparent
       spanId: "...",
       spanLabel: "...",
       ...

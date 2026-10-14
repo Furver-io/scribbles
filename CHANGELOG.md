@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A traceparent passed as `traceId` is parsed every time.** The traceparent regex kept
   match state between calls, so with the same valid traceparent every second call stored
   the whole `00-...-01` string as the trace id instead of the 32-hex id.
+- **A full traceparent as `traceId` no longer breaks `traceTrigger` and request fields.**
+  It replaced the trace's state, so the next log inside the trace threw a `TypeError` into
+  the caller and `headers`, `url`, `path`, `query`, `params` and `method` were lost. They are
+  now kept, and the traceparent's parent span id is reported as `trace.parentId` in `dataOut`.
 
 ---
 

@@ -142,6 +142,8 @@ interface GitInfo {
  */
 interface TraceInfo {
     traceId?: string;
+    /** Caller's span id, when `traceId` was passed as a full W3C traceparent */
+    parentId?: string;
     spanId?: string;
     span64?: string;
     spanLabel?: string;

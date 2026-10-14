@@ -17,6 +17,8 @@ scenarios/
 ├── named-exports.scenarios.test.js
 ├── node-cjs.scenarios.test.js
 ├── node-esm.scenarios.test.js
+├── outbound-get-load-order.scenarios.test.js
+├── outbound-git-hash.scenarios.test.js
 ├── README.md
 └── files.md
 ```
@@ -77,3 +79,13 @@ but against a `node app.js` child process.
 Node-ESM scenarios: `configured` (via `--import scribbles/register`)
 and `unconfigured` (warn-and-degrade). Skipped on Node < 20.6 where
 `module.register()` is not stable.
+
+### `outbound-get-load-order.scenarios.test.js`
+Load order for outgoing `http.get` / `request`: an ES module's
+`import { get } from 'node:http'` after scribbles carries the trace, while a
+function copied out of `http` before scribbles loads is the documented limit.
+
+### `outbound-git-hash.scenarios.test.js`
+A build with no `.git` folder still reaches downstream services (no
+`x-git-hash: undefined`), and a bundler-injected `__scribbles_gitStatus__` hash
+is forwarded.

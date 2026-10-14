@@ -20,9 +20,9 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { runScenario } = require('./scenarios/harness/spawn.cjs');
+const { runScenario } = require('./harness/spawn.cjs');
 
-const INDEX = path.resolve(__dirname, '..', 'index.js');
+const INDEX = path.resolve(__dirname, '..', '..', 'index.js');
 
 /**
  * Boots scribbles in a fresh process with no git repository around it, calls

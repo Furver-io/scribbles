@@ -41,6 +41,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { bootWithHostPackage } = require('./harness/host-package.cjs');
 
 describe('Scenario: checkNodeVer — old-Node throw path', () => {
   it('throws when process.version reports a pre-8.5 Node release', () => {
@@ -196,115 +197,45 @@ describe('Scenario: root index.js — parent package.json scribbles auto-config'
   //
   // Fires when Scribbles is installed under a host project's
   // `node_modules/scribbles/`, where `__dirname + '/../../package.json'`
-  // resolves to the host's package.json. Driven in-process via
-  // `jest.isolateModules` + a real file at the expected path.
-  //
-  // Each test writes a DIFFERENT body to the same parent path, so
-  // cross-test cache leakage would produce flapping results. A
-  // `beforeEach` / `afterEach` pair scrubs both Node's require.cache
-  // AND Jest's module registry between tests to guarantee the next
-  // test reads whatever is physically on disk at boot time.
+  // resolves to the host's package.json. Each story boots scribbles in its own
+  // `node` process with a synthetic host package.json (see
+  // `harness/host-package.cjs`), so nothing is written outside the repo and no
+  // other test file can observe the host file mid-run.
 
-  // Booting scribbles afresh inside `jest.isolateModules` re-runs the
-  // hijacker installer, which replaces `http.request` / `https.request`
-  // with a wrapper that closes over the isolate's config. Leaving that
-  // wrapper in place would shadow the outer test world's config and
-  // flake the 32-hijacker-http-request suite. Capture the pre-test
-  // natives and restore them afterwards.
-  const http = require('http');
-  const https = require('https');
-  let savedHttpRequest;
-  let savedHttpsRequest;
-
-  beforeEach(() => {
-    jest.resetModules();
-    try { delete require.cache[parentPkgPath]; } catch (_) { /* may not exist */ }
-    try { delete require.cache[require.resolve('../../index.js')]; } catch (_) { /* may not exist */ }
-    try { delete require.cache[require.resolve('../../src/core/config')]; } catch (_) { /* may not exist */ }
-    savedHttpRequest = http.request;
-    savedHttpsRequest = https.request;
-  });
-
-  afterEach(() => {
-    http.request = savedHttpRequest;
-    https.request = savedHttpsRequest;
-  });
-  // `index.js` builds the probe path as `__dirname + '/../../package.json'`
-  // where `__dirname` is the scribbles root (`/.../SOURCE/scribbles`).
-  // Two `..` segments take us to the grandparent of scribbles (not its
-  // parent — the `scribbles` path segment consumes one ascent, leaving
-  // only one more before hitting the sibling-of-SOURCE dir). Use the
-  // same literal expression the runtime does so the test lines up with
-  // whatever Node ends up normalising it to.
-  const parentPkgPath = path.normalize(
-    path.resolve(__dirname, '..', '..') + '/../../package.json'
-  );
+  const PROBE = `
+    const http = require('http');
+    const bodies = [];
+    scribbles.config({ stdOut: null, dataOut: (b) => bodies.push(b) });
+    scribbles.log('quiet?');
+    scribbles.warn('loud');
+    console.log(JSON.stringify({
+      mode: bodies.length ? bodies[0].info.mode : null,
+      levels: bodies.map((b) => b.info.logLevel),
+      hijacked: http.request[Symbol.for('scribbles.hijacker.wrapper')] === true
+    }));
+  `;
 
   it('ignores a parent package.json that has no `scribbles` block', () => {
-    // Covers the FALSE arm of the inner `if (packageJson.scribbles)`
-    // check. A host package.json without a scribbles key must leave
-    // `packageJson_scribbles` at its default `{}` and config.mode
-    // remains whatever NODE_ENV dictated.
-    if (fs.existsSync(parentPkgPath)) {
-      console.warn('Skipping parent-package.json scenario: real file exists at ' + parentPkgPath);
-      return;
-    }
-    fs.writeFileSync(
-      parentPkgPath,
-      JSON.stringify({ name: 'synthetic-host-no-scribbles-key' }, null, 2)
-    );
-    try {
-      delete require.cache[parentPkgPath];
-      jest.isolateModules(() => {
-        const scribbles = require('../../index.js');
-        const cfg = require('../../src/core/config');
-        expect(typeof cfg.mode).toBe('string');
-        expect(cfg.mode).not.toBe('fromParentPkg');
-        expect(typeof scribbles.log).toBe('function');
-      });
-    } finally {
-      try { fs.unlinkSync(parentPkgPath); } catch (_) { /* best-effort */ }
-      delete require.cache[parentPkgPath];
-    }
+    // Covers the FALSE arm of the inner `if (packageJson.scribbles)` check: the host
+    // file is read but contributes nothing, so defaults apply.
+    const { status, result } = bootWithHostPackage({ name: 'synthetic-host-no-scribbles-key' }, PROBE);
+
+    expect(status).toBe(0);
+    expect(result.mode).not.toBe('fromParentPkg');
+    expect(result.levels).toEqual(['log', 'warn']);
+    expect(result.hijacked).toBe(true);
   });
 
   it('loads the `scribbles` block from a parent package.json when present', () => {
-    if (fs.existsSync(parentPkgPath)) {
-      // A real package.json is already at the expected path — running
-      // this test would either overwrite it (unsafe) or read its
-      // contents (non-hermetic). Skip with a clear message.
-      console.warn('Skipping parent-package.json scenario: real file exists at ' + parentPkgPath);
-      return;
-    }
-    fs.writeFileSync(
-      parentPkgPath,
-      JSON.stringify({
-        name: 'synthetic-host-for-scribbles-test',
-        scribbles: { mode: 'fromParentPkg', logLevel: 'warn' }
-      }, null, 2)
-    );
-    expect(fs.existsSync(parentPkgPath)).toBe(true);
-    try {
-      // Drop the parentPkgPath from require.cache too. Jest's
-      // `isolateModules` resets its OWN registry but relative JSON
-      // imports can end up cached on Node's require.cache above
-      // that layer. If a prior test required this same path with
-      // different contents, the new isolate would see the stale
-      // body. Clearing all three caches guarantees a fresh read.
-      delete require.cache[require.resolve('../../index.js')];
-      delete require.cache[require.resolve('../../src/core/config')];
-      delete require.cache[parentPkgPath];
-      jest.isolateModules(() => {
-        const scribbles = require('../../index.js');
-        const cfg = require('../../src/core/config');
-        expect(cfg.mode).toBe('fromParentPkg');
-        expect(cfg.logLevel).toBe('warn');
-        expect(typeof scribbles.log).toBe('function');
-      });
-    } finally {
-      try { fs.unlinkSync(parentPkgPath); } catch (_) { /* best-effort cleanup */ }
-      delete require.cache[parentPkgPath];
-    }
+    const { status, result } = bootWithHostPackage({
+      name: 'synthetic-host-for-scribbles-test',
+      scribbles: { mode: 'fromParentPkg', logLevel: 'warn' }
+    }, PROBE);
+
+    expect(status).toBe(0);
+    expect(result.mode).toBe('fromParentPkg');
+    // logLevel "warn" silences `log` but still lets `warn` through.
+    expect(result.levels).toEqual(['warn']);
   });
 });
 

@@ -767,44 +767,29 @@ describe('Scenario: stringify array rendering with space-containing pad', () => 
 });
 
 describe('Scenario: config.hijack=false disables http.request wrapping', () => {
-  // `index.js` has the line
-  //     if (config.hijack !== false) { hijacker(scribbles, config) }
-  // — driving the FALSE arm requires booting scribbles with
-  // `hijack: false` already on the config module, which in turn
-  // requires a parent package.json `scribbles.hijack = false` block
-  // (the only path that feeds hijack into the initial config() call).
-  const fs = require('fs');
-  const path = require('path');
-  const parentPkgPath = path.normalize(
-    path.resolve(__dirname, '..', '..') + '/../../package.json'
-  );
+  // `index.js` skips the outgoing-request wrapper when the host project's package.json
+  // sets `"scribbles": { "hijack": false }` (the only way to feed `hijack` into the
+  // initial config). Booted in its own process with a synthetic host package.json.
+  const { bootWithHostPackage } = require('./harness/host-package.cjs');
 
   it('skips the hijacker install when parent package.json sets hijack=false', () => {
-    if (fs.existsSync(parentPkgPath)) return; // cf. boot-environment scenarios
-    fs.writeFileSync(
-      parentPkgPath,
-      JSON.stringify({
-        name: 'synthetic-host-hijack-off',
-        scribbles: { hijack: false }
-      }, null, 2)
+    const { status, result } = bootWithHostPackage(
+      { name: 'synthetic-host-hijack-off', scribbles: { hijack: false } },
+      "console.log(JSON.stringify({ hijacked: require('http').request[Symbol.for('scribbles.hijacker.wrapper')] === true }));"
     );
-    try {
-      jest.resetModules();
-      delete require.cache[parentPkgPath];
-      delete require.cache[require.resolve('../../index.js')];
-      delete require.cache[require.resolve('../../src/core/config')];
-      jest.isolateModules(() => {
-        require('../../index.js');
-        const cfg = require('../../src/core/config');
-        // After the fresh boot with the parent-package override,
-        // config.hijack is `false` and index.js line 152 skipped the
-        // hijacker installer — the `if` false-arm is covered.
-        expect(cfg.hijack).toBe(false);
-      });
-    } finally {
-      try { fs.unlinkSync(parentPkgPath); } catch (_) { /* best-effort */ }
-      delete require.cache[parentPkgPath];
-    }
+
+    expect(status).toBe(0);
+    expect(result.hijacked).toBe(false);
+  });
+
+  it('installs the hijacker when the host package.json does not mention hijack', () => {
+    const { status, result } = bootWithHostPackage(
+      { name: 'synthetic-host-default' },
+      "console.log(JSON.stringify({ hijacked: require('http').request[Symbol.for('scribbles.hijacker.wrapper')] === true }));"
+    );
+
+    expect(status).toBe(0);
+    expect(result.hijacked).toBe(true);
   });
 });
 

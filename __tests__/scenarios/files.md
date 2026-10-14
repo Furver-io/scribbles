@@ -9,8 +9,10 @@ scenarios/
 ├── bun-cjs.scenarios.test.js
 ├── bun-esm.scenarios.test.js
 ├── bun-test.scenarios.test.js
+├── colored-labels.scenarios.test.js
 ├── fixtures/
 ├── harness/
+├── installed-package.scenarios.test.js
 ├── named-exports.scenarios.test.js
 ├── node-cjs.scenarios.test.js
 ├── node-esm.scenarios.test.js
@@ -43,6 +45,15 @@ Bun-ESM scenarios: `configured` (via `bunfig.toml preload`) and
 Bun test runner scenario. Exercises the separate `[test]` section in
 `bunfig.toml` preload configuration because `bun test` does not share
 preload state with `bun run`.
+
+### `colored-labels.scenarios.test.js`
+A colored terminal prints `userName:` (in its own color) before each value.
+Needs a fresh `node` child because variable names come from the source
+transform.
+
+### `installed-package.scenarios.test.js`
+Scribbles copied under a scratch `node_modules/scribbles`: handing `log` to
+`forEach` still names the app's file and line, and `node -e` still prints.
 
 ### `named-exports.scenarios.test.js`
 In-process pin on the v2 CJS named-export surface

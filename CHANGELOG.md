@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   return `undefined`, so async handlers lost their result and their rejections became
   unhandled. The callback still receives the span id string first and now also a
   `{ traceId, spanId }` context object second; typings return the callback's type.
+- **A traceparent passed as `traceId` is parsed every time.** The traceparent regex kept
+  match state between calls, so with the same valid traceparent every second call stored
+  the whole `00-...-01` string as the trace id instead of the 32-hex id.
 
 ---
 

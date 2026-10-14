@@ -25,7 +25,9 @@ const { store } = require('./namespace');
 
 const tracestateLookup = new Map();
 
-const regxTraceparent = /[\d\w]{2}-[\d\w]{32}-[\d\w]{16}-[\d\w]{02}/g
+// No `g` (or `y`) flag: such a regex keeps `lastIndex` between `.test()` calls,
+// which made every second parse of the same traceparent fail.
+const regxTraceparent = /[\d\w]{2}-[\d\w]{32}-[\d\w]{16}-[\d\w]{02}/
 
 /**
  * Creates a trace function with injected dependencies

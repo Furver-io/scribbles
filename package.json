@@ -52,12 +52,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/codemeasandwich/scribbles.git"
+    "url": "git+https://github.com/Furver-io/scribbles.git"
   },
   "author": "Brian Shannon (https://github.com/codemeasandwich)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/codemeasandwich/scribbles/issues"
+    "url": "https://github.com/Furver-io/scribbles/issues"
   },
   "keywords": [
     "trace",
@@ -65,7 +65,7 @@
     "logging",
     "nodejs"
   ],
-  "homepage": "https://github.com/codemeasandwich/scribbles#readme",
+  "homepage": "https://github.com/Furver-io/scribbles#readme",
   "devDependencies": {
     "jest": "^29.3.1",
     "moment": "^2.24.0",

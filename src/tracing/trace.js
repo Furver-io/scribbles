@@ -122,15 +122,26 @@ function createTrace(deps) {
   /**
    * Gets trace context headers for W3C Trace Context propagation
    * @param {Object} [customHeader] - Custom headers to merge
-   * @returns {Object} Headers object with traceparent and tracestate
+   * @returns {Object} Headers object with traceparent and tracestate; outside
+   *          a trace, a copy of `customHeader` with nothing added
    */
   trace.headers = function traceContext(customHeader) {
 
     const correlaterValue = myNamespace()
 
-    const { traceId, spanId, span64, tracestate, version, flag, headers } = correlaterValue('traceVals') || {};
+    const traceVals = correlaterValue('traceVals');
 
-    let tracestateValue = (tracestate || []).filter(span => config.vendor !== span.key)
+    // Outside a trace there is no trace context to propagate. Hand back
+    // only what the caller supplied: inventing a `traceparent` from an
+    // absent trace id would send `00-undefined-undefined-01` downstream.
+    if (!traceVals) {
+      return Object.assign({}, customHeader)
+    }
+
+    // Inside a trace `tracestate` is always an array (see `trace()` above).
+    const { traceId, spanId, span64, tracestate, version, flag, headers } = traceVals;
+
+    let tracestateValue = tracestate.filter(span => config.vendor !== span.key)
       .reduce((arr, { key, value }) => {
         arr.push(`${key}=${value}`);
         return arr;
@@ -143,7 +154,7 @@ function createTrace(deps) {
     // dead and was removed per CASE's dead-code rule.
     if (config.edgeLookupHash) {
       const fullTracestate = tracestateValue.join();
-      const hash = 'h:' + hashTracestate(tracestate || []);
+      const hash = 'h:' + hashTracestate(tracestate);
       tracestateLookup.set(hash, fullTracestate);
       tracestateValue = hash;
     } else {

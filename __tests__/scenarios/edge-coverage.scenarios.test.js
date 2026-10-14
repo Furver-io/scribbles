@@ -839,22 +839,18 @@ describe('Scenario: trace.headers with empty git hash — header omitted', () =>
   });
 });
 
-describe('Scenario: trace.headers outside a trace with edgeLookupHash enabled', () => {
+describe('Scenario: trace.headers inside a trace with edgeLookupHash enabled', () => {
   const scribbles = require('../../index.js');
   afterAll(() => scribbles.config({ edgeLookupHash: false }));
 
-  it('uses the [] fallback when tracestate is absent (trace.headers outside trace)', () => {
-    // `trace.js` line ~110:
-    //     hashTracestate(tracestate || [])
-    // — the `|| []` RHS fires ONLY when tracestate is undefined,
-    // which in practice means `trace.headers()` is called OUTSIDE a
-    // `scribbles.trace(...)` block while `edgeLookupHash` is enabled.
-    // Inside a trace, traceVals.tracestate is always an array (set at
-    // trace.js line 70-72 if missing), so the LHS is always truthy.
+  it('hashes the tracestate of a trace that arrived without one', () => {
+    // A trace started without an inbound `tracestate` still has an (empty)
+    // tracestate array, and `edgeLookupHash` swaps the header for a short hash.
     scribbles.config({ edgeLookupHash: true, stdOut: null, dataOut: null });
-    const h = scribbles.trace.headers();
-    expect(h).toHaveProperty('tracestate');
-    expect(typeof h.tracestate).toBe('string');
+    scribbles.trace('edge-lookup-span', () => {
+      const h = scribbles.trace.headers();
+      expect(h.tracestate).toMatch(/^h:/);
+    });
   });
 });
 

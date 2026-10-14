@@ -456,7 +456,10 @@ interface TraceFunction {
      */
     <T>(options: TraceOptions, callback: TraceCallback<T>): T;
     /**
-     * Get W3C trace context headers (must be called inside a trace)
+     * Get W3C trace context headers (must be called inside a trace).
+     * Outside a trace there is nothing to propagate: the result is a copy of
+     * `customHeaders` with no `traceparent`, `tracestate` or `x-git-hash`.
+     * `x-git-hash` is also omitted when the git hash is empty.
      * @param customHeaders - Optional custom headers to merge
      */
     headers: (customHeaders?: { [key: string]: string }) => TraceHeaders;

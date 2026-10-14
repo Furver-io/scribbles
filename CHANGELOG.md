@@ -69,6 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   folder). Node rejects that header value, so the first outgoing `http.request` inside a trace
   threw `TypeError: Invalid value "undefined" for header "x-git-hash"`. The header is now
   omitted, both for automatic injection and for `scribbles.trace.headers()`.
+- **Outgoing requests outside a trace:** with `headers` or `headersMapping` configured, a call
+  made with no active trace (a boot-time health check, a cron job) used to carry
+  `traceparent: 00-undefined-undefined-01` and `tracestate: <vendor>=undefined`. It now leaves
+  exactly as the developer wrote it. `scribbles.trace.headers()` outside a trace likewise returns
+  only the headers passed to it.
 
 ---
 

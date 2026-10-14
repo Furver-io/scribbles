@@ -1175,7 +1175,9 @@ app.get('/', function (req, res){
 The `trace.headers()` function returns an object containing:
 - `traceparent` - W3C trace context parent header
 - `tracestate` - W3C trace context state header
-- `x-git-hash` - The current git commit hash (automatically included)
+- `x-git-hash` - The current git commit hash (automatically included, omitted when scribbles cannot find a git hash, for example in a build without a `.git` folder)
+
+Call it inside a trace. Outside a trace there is nothing to propagate, so `trace.headers()` returns only the headers you passed in (none of the three above), and automatic injection into outgoing requests sends nothing either.
 
 ---
 

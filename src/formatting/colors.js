@@ -247,19 +247,16 @@ function formatColoredGroupBracketPrefix(level, groupLevel, colorblindMode) {
 /**
  * 24-bit opener for the compiled-line tail on `group` / `groupEnd` rows (matches ┌/└ depth).
  *
- * @param {string} level - `group`, `groupCollapsed`, or `groupEnd`.
+ * @param {string} level - `group`, `groupCollapsed`, or `groupEnd` (the only levels the caller passes).
  * @param {number} groupLevel - `body.context.groupLevel` at emit.
  * @param {boolean} colorblindMode
  * @returns {string} SGR open sequence (no reset).
  */
 function groupBracketTailOpen(level, groupLevel, colorblindMode) {
-  if (level === 'group' || level === 'groupCollapsed') {
-    return groupTreeOpenAtDepth(groupLevel, colorblindMode);
-  }
   if (level === 'groupEnd') {
     return groupTreeOpenAtDepth(groupLevel + 1, colorblindMode);
   }
-  return groupTreeOpenAtDepth(1, colorblindMode);
+  return groupTreeOpenAtDepth(groupLevel, colorblindMode);
 }
 
 /**

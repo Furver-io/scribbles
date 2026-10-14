@@ -20,9 +20,9 @@ const {
  * message/path/time still use `colorScheme[level]` on the plain prefix. When prose is
  * on, `scribbleStdOutFormat` paints `38;2` tiers and level accent instead.
  *
- * Technical: `outputValue` is the exact `{value}` substitution from `scribble.js`;
- * we split `compiledLine` at its first occurrence. If it is missing or at column 0,
- * return `compiledLine` unchanged.
+ * Technical: `outputValue` is the exact `{value}` substitution from `scribble.js` and both
+ * callers pass a non-empty string with a defined `levelColor`; we split `compiledLine` at its
+ * first occurrence. If it is missing or at column 0, return `compiledLine` unchanged.
  *
  * @param {string} compiledLine
  * @param {string} levelColor
@@ -30,9 +30,6 @@ const {
  * @returns {string}
  */
 function applyLevelColorToPlainPrefixOnly(compiledLine, levelColor, outputValue) {
-  if (!levelColor || !outputValue || typeof outputValue !== 'string') {
-    return compiledLine;
-  }
   const vStart = compiledLine.indexOf(outputValue);
   if (vStart <= 0) {
     return compiledLine;

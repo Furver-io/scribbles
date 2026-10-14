@@ -68,13 +68,14 @@ function stringifyInner(input, options, pad, name, seen) {
   };
 
   /**
-   * Pair plain and colored strings when a syntax painter is active.
+   * Pair plain and colored strings; every caller has already returned the plain string
+   * when no syntax painter is active.
    *
    * @param {string} plainStr
    * @param {string} coloredStr
-   * @returns {string|{plain:string,colored:string}}
+   * @returns {{plain:string,colored:string}}
    */
-  const wrapDual = (plainStr, coloredStr) => (painter ? { plain: plainStr, colored: coloredStr } : plainStr);
+  const wrapDual = (plainStr, coloredStr) => ({ plain: plainStr, colored: coloredStr });
 
   if (seen.includes(input)) {
     if (Array.isArray(input)) {

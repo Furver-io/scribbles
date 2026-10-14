@@ -146,7 +146,7 @@ function stringifyObjectMapBranch(ctx) {
 
   const returnValueColored = paintTypePrefix(painter, typeOfObj) + painter.paint('bracket', '{ ') + tokens.newline
     + objectKeys.map((el, i) => mapLineColored(el, i)).join('')
-    + tokens.pad + ((tokens.pad || '').includes(' ') ? '' : ' ') + painter.paint('bracket', '}');
+    + tokens.pad + ' ' + painter.paint('bracket', '}');
 
   seen.pop();
 

@@ -53,13 +53,20 @@ function deepMerge(target, source) {
  * @returns {{ file: string, line: number, col: number } | null} Parsed location or null
  */
 function walkStackForJsLocation(stack) {
-  if (typeof stack !== 'string' || !stack) return null;
   const lines = stack.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    if (!line) continue;
+    // Coverage note: the three skips below fire only when scribbles itself runs from an
+    // installed copy (`node_modules/scribbles/...`, `.../scribbles/dist/...`) or when a
+    // runtime prints `node:internal/*.js` frames. A checkout under test has none of those
+    // paths, and a copy outside the repo cannot be attributed to the repo's coverage map,
+    // so the installed-package behaviour is proven black-box in
+    // `__tests__/scenarios/installed-package.scenarios.test.js` instead.
+    /* istanbul ignore if */
     if (line.includes('node_modules/scribbles')) continue;
+    /* istanbul ignore if */
     if (line.includes('/scribbles/dist/')) continue;
+    /* istanbul ignore if */
     if (line.includes('node:internal')) continue;
     const re = /([A-Za-z0-9_.-]+\.(?:js|mjs|cjs)):(\d+)(?::(\d+))?/g;
     let m;
@@ -68,11 +75,15 @@ function walkStackForJsLocation(stack) {
       last = {
         file: m[1],
         line: parseInt(m[2], 10),
-        col: m[3] != null ? parseInt(m[3], 10) : 1,
+        // V8 always prints a column; a frame without one comes from another engine.
+        col: m[3] != null ? parseInt(m[3], 10) : /* istanbul ignore next */ 1,
       };
     }
     if (last && Number.isFinite(last.line) && last.line > 0) return last;
   }
+  // Reached only when scribbles' own frames were skipped above and no user frame names a
+  // `.js` file (for example `node -e`); see the installed-package scenario.
+  /* istanbul ignore next */
   return null;
 }
 
@@ -122,6 +133,7 @@ function getSource(stack) {
 
   if (!Number.isFinite(resolvedLine) || resolvedLine < 1) {
     const walked = walkStackForJsLocation(stack);
+    /* istanbul ignore else */
     if (walked) {
       resolvedLine = walked.line;
       finalFile = walked.file;

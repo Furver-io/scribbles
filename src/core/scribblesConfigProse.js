@@ -16,10 +16,6 @@ const { parseProseHexColor } = require('../formatting/colors');
  * @returns {void}
  */
 function applyProsePrettyConfig(config) {
-  if (!config.pretty) {
-    return;
-  }
-
   if (undefined === config.pretty.prosePrefix) {
     config.pretty.prosePrefix = true;
   }
@@ -50,16 +46,14 @@ function applyProsePrettyConfig(config) {
     if (hex != null && !parseProseHexColor(hex)) {
       throw new Error('pretty.proseColor must be a #RRGGBB hex string');
     }
-    const anchorRgb = parseProseHexColor(hex || '#DDDDDD');
-    if (anchorRgb) {
-      config.pretty.__proseResolved = {
-        anchorRgb,
-        proseImportanceScale: config.pretty.proseImportanceScale,
-        proseContinuationDarken: config.pretty.proseContinuationDarken,
-        proseEmptyRegionDarken: config.pretty.proseEmptyRegionDarken,
-        proseWrapperExtraDarken: config.pretty.proseWrapperExtraDarken
-      };
-    }
+    // `hex` is null (use the default) or was validated above, so the anchor always parses.
+    config.pretty.__proseResolved = {
+      anchorRgb: parseProseHexColor(hex || '#DDDDDD'),
+      proseImportanceScale: config.pretty.proseImportanceScale,
+      proseContinuationDarken: config.pretty.proseContinuationDarken,
+      proseEmptyRegionDarken: config.pretty.proseEmptyRegionDarken,
+      proseWrapperExtraDarken: config.pretty.proseWrapperExtraDarken
+    };
   } else {
     delete config.pretty.__proseResolved;
   }

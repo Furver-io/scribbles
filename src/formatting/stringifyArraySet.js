@@ -70,7 +70,6 @@ function stringifyArraySetBranch(ctx) {
    * @returns {string}
    */
   const doWorkColored = (addIndexs) => {
-    if (!painter) return doWorkPlain(addIndexs);
     return `${paintTypePrefix(painter, typeOfObj)}${painter.paint('bracket', '[ ')}` + tokens.newline + input.map((element, i) => {
       const eolPlain = input.length - 1 === i ? tokens.newline
         : ',' + tokens.newlineOrSpace;
@@ -93,7 +92,7 @@ function stringifyArraySetBranch(ctx) {
       }
 
       return tokens.indent + idxPart + col + eolCol;
-    }).join('') + tokens.pad + ((tokens.pad || '').includes(' ') ? '' : ' ') + painter.paint('bracket', ']');
+    }).join('') + tokens.pad + ' ' + painter.paint('bracket', ']');
   };
 
   const returnValuePlain = doWorkPlain(false);

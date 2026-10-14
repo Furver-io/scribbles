@@ -120,7 +120,7 @@ function createConfig(deps) {
         !!config.colorblindMode,
         config.pretty.syntaxColorScheme
       );
-    } else if (config.pretty) {
+    } else {
       delete config.pretty.__syntaxColorResolved;
     }
 

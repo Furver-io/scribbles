@@ -88,7 +88,7 @@ function mergeResolvedSyntaxScheme(colorblindMode, userScheme) {
  * @returns {{ paint: function(string, string): string, scheme: Object }}
  */
 function createSyntaxPainter(opts) {
-  const scheme = opts.scheme || defaultSyntaxColorScheme;
+  const scheme = opts.scheme;
   /**
    * @param {string} role - syntax role key
    * @param {string} text - literal segment (no nested ANSI expected from caller)
@@ -118,13 +118,10 @@ function paintValueLabel(painter, name) {
  * Paint `String"…"` disambiguation for JSON-like string values.
  *
  * @param {Object} painter - Syntax painter with `paint(role, text)`.
- * @param {string} innerPlain - full `String"content"` plain string
+ * @param {string} innerPlain - full `String"content"` plain string (the caller always builds it)
  * @returns {string}
  */
 function paintStringDisambiguation(painter, innerPlain) {
-  if (!innerPlain.startsWith('String"')) {
-    return painter.paint('string', innerPlain);
-  }
   const rest = innerPlain.slice('String'.length);
   return painter.paint('disambiguationPrefix', 'String') + painter.paint('string', rest);
 }

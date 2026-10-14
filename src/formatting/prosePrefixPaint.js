@@ -61,24 +61,21 @@ const UNKNOWN_TOKEN_DARKEN = 0.35;
  * @param {Object} opts.all - Flattened template data (same object passed to `__compile`).
  * @param {Object} opts.config - Scribbles config (`pretty`, `format`, …).
  * @param {string} [opts.levelColorName] - `colorScheme[level]` name for `{logLevel}` accent.
- * @returns {string} SGR-decorated prefix, or `prefixText` if anchor invalid / desync.
+ * @returns {string} SGR-decorated prefix, or `prefixText` if the rendered text desyncs from `format`.
+ *
+ * Technical: `applyProsePrettyConfig` has already validated `proseColor` and resolved every
+ * numeric prose option, so this function reads them without fallbacks.
  */
 function paintProseTemplatePrefix(opts) {
   const { prefixText, all, config, levelColorName } = opts;
   const pretty = config.pretty;
   const anchor = parseProseHexColor(pretty.proseColor || '#DDDDDD');
-  if (!anchor) {
-    return prefixText;
-  }
 
-  const scale = pretty.proseImportanceScale !== undefined ? pretty.proseImportanceScale : 1;
-  const wrapperExtra =
-    pretty.proseWrapperExtraDarken !== undefined ? pretty.proseWrapperExtraDarken : 0.05;
-  const emptyReg =
-    pretty.proseEmptyRegionDarken !== undefined ? pretty.proseEmptyRegionDarken : 0.75;
-  const msgLift = pretty.proseMessageLift !== undefined ? pretty.proseMessageLift : 0;
-  const userField = pretty.proseFieldDarken || {};
-  const mergedBase = Object.assign({}, DEFAULT_PROSE_DARKEN, userField);
+  const scale = pretty.proseImportanceScale;
+  const wrapperExtra = pretty.proseWrapperExtraDarken;
+  const emptyReg = pretty.proseEmptyRegionDarken;
+  const msgLift = pretty.proseMessageLift;
+  const mergedBase = Object.assign({}, DEFAULT_PROSE_DARKEN, pretty.proseFieldDarken);
 
   /**
    * @param {string} name
@@ -175,12 +172,13 @@ function paintProseTemplatePrefix(opts) {
         if (sg.type === 'literal') {
           const ptn = prevTokenInRange(segments, k, innerLo, innerHi);
           const ntn = nextTokenInRange(segments, k, innerLo, innerHi);
-          let dLit = innerBase;
+          let dLit;
           if (ptn && ntn) {
             dLit = Math.max(darkenTok(ptn), darkenTok(ntn));
           } else if (ptn) {
             dLit = Math.max(darkenTok(ptn), innerBase);
-          } else if (ntn) {
+          } else {
+            // A wrapper with fields always has a neighbouring field on one side.
             dLit = Math.max(innerBase, darkenTok(ntn));
           }
           appendProsePlain(sink, sg.text, dLit);
@@ -191,10 +189,6 @@ function paintProseTemplatePrefix(opts) {
       }
 
       appendProsePlain(sink, closeCh, dBracket);
-    }
-
-    if (raw.length === 0) {
-      return -1;
     }
 
     out += sink.s;

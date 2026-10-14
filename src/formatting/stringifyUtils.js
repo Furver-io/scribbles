@@ -48,6 +48,8 @@ function getObjName(val) {
 
 /**
  * Collapse or expand token placeholders using plain text length; mirror for colored twin.
+ * A syntax painter only exists after `scribbles.config()`, which always resolves
+ * `inlineCharacterLimit`, so the placeholder tokens are always in use here.
  *
  * @param {Object} options - pretty options
  * @param {Object} tokens - newline / pad / indent placeholders
@@ -60,10 +62,6 @@ function getObjName(val) {
  * @returns {{ plain: string, colored: string }}
  */
 function expandWhiteSpaceDual(options, tokens, pad, indent, plainStr, coloredStr, reGenPlain, reGenColored) {
-  if (options.inlineCharacterLimit === undefined) {
-    return { plain: plainStr, colored: coloredStr };
-  }
-
   const oneLined = plainStr
     .replace(new RegExp(tokens.newline, 'g'), '')
     .replace(new RegExp(tokens.newlineOrSpace, 'g'), ' ')

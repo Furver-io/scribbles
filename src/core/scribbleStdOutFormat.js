@@ -51,14 +51,8 @@ function applyProseMultilineToCompiledLine(
   const lines = compiledLine.split('\n');
   const line0 = lines[0];
   // `indexOf('')` is 0 — treat empty `{value}` as “prefix is the whole line” so prose still runs.
-  let v0;
-  if (outputValue == null || outputValue === '') {
-    v0 = line0.length;
-  } else if (typeof outputValue === 'string') {
-    v0 = line0.indexOf(outputValue);
-  } else {
-    v0 = -1;
-  }
+  // `outputValue` is always a string: the caller concatenates the label and the value core.
+  const v0 = outputValue === '' ? line0.length : line0.indexOf(outputValue);
   let didPrefixPaint = false;
   if (v0 !== -1 && (v0 > 0 || v0 === line0.length)) {
     const pre = line0.slice(0, v0);
@@ -75,9 +69,8 @@ function applyProseMultilineToCompiledLine(
   const p = config.pretty;
   const anchor = parseProseHexColor(p.proseColor || '#DDDDDD');
   if (anchor && lines.length > 1) {
-    const scale = p.proseImportanceScale !== undefined ? p.proseImportanceScale : 1;
-    const cd =
-      (p.proseContinuationDarken !== undefined ? p.proseContinuationDarken : 0.65) * scale;
+    // `applyProsePrettyConfig` always resolves both factors, so no fallback is needed here.
+    const cd = p.proseContinuationDarken * p.proseImportanceScale;
     const [r, g, b] = lerpRgbTowardBlack(anchor.r, anchor.g, anchor.b, clampProseFactor(cd));
     const open = rgbFgOpen(r, g, b);
     for (let i = 1; i < lines.length; i++) {
@@ -199,10 +192,9 @@ function formatScribbleStdOutLine(ctx) {
       valueCore = ['{', '['].includes(value.trim()[0])
         ? paintStringDisambiguation(syntaxPainter, valueCore)
         : syntaxPainter.paint('string', valueCore);
-    } else if (typeof value === 'function') {
+    } else {
+      // The only type left after object, symbol, boolean, nullish, number, bigint and string.
       valueCore = syntaxPainter.paint('function', valueCore);
-    } else if (!value) {
-      valueCore = syntaxPainter.paint('number', valueCore);
     }
   }
 

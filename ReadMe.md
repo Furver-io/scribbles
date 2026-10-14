@@ -191,7 +191,7 @@ See [MIGRATION.md](./MIGRATION.md). The TL;DR:
 
 - Your existing CJS code (`const scribbles = require('scribbles');
   scribbles.config(...)`) continues to work unchanged.
-- v2 adds ESM support, Bun support (`bun run`, `bun test`, `bun build`),
+- v2 adds ESM support, Bun support (`bun run`, `bun test`, and `bun build` bundles with the `scribbles/bun-plugin` build plugin),
   a new `register` named export, and fixes a v1.7.0 bug where automatic
   variable-name extraction silently never activated.
 - In ESM, the v2.0.0 "hard cut" applies: `scribbles.config(...)` on the
@@ -506,7 +506,7 @@ When logging values, scribbles adds type annotations to help identify the data t
 
 ### Limitations
 
-- Works across Node.js (`require`/`import`) and Bun (`bun run`, `bun test`, `bun build`) — ESM contexts require the `scribbles/register` preload (see "Runtime support" above). Bundled/transpiled code still needs source maps for file/line accuracy.
+- Works across Node.js (`require`/`import`) and Bun (`bun run`, `bun test`, `bun build`) — ESM contexts require the `scribbles/register` preload (see "Runtime support" above). A `Bun.build` bundle runs without the preload; add the `scribbles/bun-plugin` build plugin (see `docs/runtime-setup.md`) to keep variable names in it, otherwise it logs without them. Bundled/transpiled code still needs source maps for file/line accuracy.
 - Literal values (strings, numbers, booleans) don't get variable name extraction since there's no variable name to extract
 
 ---

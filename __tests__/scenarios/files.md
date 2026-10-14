@@ -7,6 +7,7 @@ End-to-end scenario tests for Scribbles' multi-runtime support.
 ```
 scenarios/
 ├── bun-cjs.scenarios.test.js
+├── bun-build.scenarios.test.js
 ├── bun-esm.scenarios.test.js
 ├── bun-test.scenarios.test.js
 ├── colored-labels.scenarios.test.js
@@ -37,6 +38,10 @@ Bun-CJS drop-in scenario. Asserts that `require('scribbles')` inside a
 `bun run app.js` process automatically enables variable-name
 extraction.
 
+### `bun-build.scenarios.test.js`
+A `Bun.build` bundle starts and logs, and keeps variable names when the
+`scribbles/bun-plugin` build plugin is used. Skipped without Bun.
+
 ### `bun-esm.scenarios.test.js`
 Bun-ESM scenarios: `configured` (via `bunfig.toml preload`) and
 `unconfigured` (warn-and-degrade behaviour).
@@ -59,6 +64,10 @@ Scribbles copied under a scratch `node_modules/scribbles`: handing `log` to
 In-process pin on the v2 CJS named-export surface
 (`config`, `trace`, `middleware`, `register`) and the
 `register.status()` / `register.assert()` introspection helpers.
+
+### `subpath-exports.scenarios.test.js`
+`scribbles/transform` resolves through the package `exports` map from both
+ESM and CJS in a fresh `node` process.
 
 ### `node-cjs.scenarios.test.js`
 Node-CJS drop-in scenario. Same claim as `bun-cjs.scenarios.test.js`

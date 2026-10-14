@@ -1,6 +1,13 @@
 /**
  * @file Core scribble logging function
+ *
+ * Technical: strict mode on purpose. A bundler that wraps the package in an ES module
+ * (`bun build`) makes every function strict; the bound log levels then see `this === null`
+ * instead of the global object. Declaring strict mode here makes Node behave the same way,
+ * so the `this` checks below are exercised everywhere.
  */
+'use strict';
+
 const config = require('./config');
 const args2keys = require('../parsing/args2keys');
 const { getSource } = require('../utils/helpers');
@@ -80,7 +87,7 @@ function createScribble(deps) {
       : undefined
     from = from || getSource(new Error().stack)
 
-    if (this.originalMessage) {
+    if (this && this.originalMessage) {
       originalMessage = this.originalMessage
     }
 

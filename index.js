@@ -33,8 +33,12 @@ const register = require('./src/register');
 
 let packageJson_scribbles = {}
 
-if (fs.existsSync(__dirname + '/../../package.json')) {
-  const packageJson = require('../../package.json');
+// The path is computed (not a literal `require('../../package.json')`) so bundlers such as
+// `bun build` leave it as a run-time require instead of failing to resolve a file that only
+// exists in the host project.
+const hostPackageJsonPath = __dirname + '/../../package.json';
+if (fs.existsSync(hostPackageJsonPath)) {
+  const packageJson = require(hostPackageJsonPath);
   if (packageJson.scribbles) {
     packageJson_scribbles = packageJson.scribbles
   }

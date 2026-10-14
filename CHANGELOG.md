@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/formatting/colors.js`) tint each rail column; implementation detail in
   `src/formatting/groupLogPrefix.js` keeps `src/core/scribble.js` within the repository
   size gate.
+- **`scribbles/bun-plugin`** — a `Bun.build` plugin that keeps variable names in bundles
+  (`plugins: [scribblesPlugin()]`). See `docs/runtime-setup.md`.
+- **`scribbles/transform`** — `transformSource` is now in the package `exports` map, with types.
+
+### Fixed
+
+- **`bun build` bundles run.** `index.mjs` now uses a static `import` of the CJS core instead of
+  `createRequire(...)('./dist/scribbles.js')`, which bundlers could not follow (the bundle crashed
+  with `Cannot find module './dist/scribbles.js'`). The host `package.json` lookup in `index.js`
+  uses a computed path so bundlers no longer fail to resolve `../../package.json`, and
+  `src/core/scribble.js` is strict mode so bound log levels behave identically when a bundler
+  wraps the package in an ES module (`this` is `null`, not the global object). The ReadMe no
+  longer claims a plain `bun build` keeps variable names; the plugin is how to get them.
 
 ---
 

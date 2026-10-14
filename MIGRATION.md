@@ -111,8 +111,10 @@ If the preload is missing in an ESM runtime, Scribbles continues to log
 with correct file/line/col (via stack traces) but variable-name extraction
 is unavailable. A one-line warning on every startup points you at the fix.
 
-Bundler support (esbuild, webpack, rollup, bun build) is tracked in
-follow-up issues on the project's GitHub and is not part of v2.0.0.
+`bun build` bundles are supported through the `scribbles/bun-plugin` build plugin (see
+`docs/runtime-setup.md`). Support for other bundlers (esbuild, webpack, rollup) is tracked in
+follow-up issues on the project's GitHub; `scribbles/transform` exposes the call-site rewrite
+for building such plugins.
 
 ### 5. Version floor (tiered)
 

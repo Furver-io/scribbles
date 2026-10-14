@@ -98,8 +98,29 @@ Bun's own docs for preload semantics. If your project never uses
 uses `bun run` directly (i.e. only `bun test`), the top-level is
 optional — but there is no harm in setting both defensively.
 
-For `bun build` producing a bundled artifact, a dedicated bundler plugin
-is tracked as a follow-up (see the project's GitHub issues).
+#### `bun build` (bundles)
+
+A bundle produced by `Bun.build` runs without the preload, so variable names have to be
+added while bundling. Add the plugin that ships with scribbles:
+
+```js
+import scribblesPlugin from 'scribbles/bun-plugin';
+
+await Bun.build({
+  entrypoints: ['./src/main.ts'],
+  outdir: './out',
+  target: 'bun',
+  plugins: [scribblesPlugin()],   // optional: scribblesPlugin({ filter: /\.tsx?$/ })
+});
+```
+
+The plugin rewrites `scribbles.<level>(...)` call sites in your own sources (never in
+`node_modules`) so the bundle logs `userName:alice` exactly as `bun run` does. Without the
+plugin the bundle still starts and logs, but without variable names. The plugin is only
+available through `Bun.build`'s JavaScript API; the `bun build` command line cannot take plugins.
+
+Tooling that needs the same rewrite can import it directly:
+`import { transformSource } from 'scribbles/transform'`.
 
 ### Mixed CJS + ESM projects
 

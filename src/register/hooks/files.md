@@ -6,6 +6,7 @@ Per-runtime source-transform installers.
 
 ```
 hooks/
+├── bun-plugin.js
 ├── cjs-extensions.js
 ├── esm-loader.mjs
 ├── README.md
@@ -13,6 +14,12 @@ hooks/
 ```
 
 ## Files
+
+### `bun-plugin.js`
+`scribbles/bun-plugin`: a `Bun.build` plugin factory. Runs the shared
+`transformSource` over project source files as Bun reads them, so a bundle
+keeps variable names (`userName:alice`) without the run-time preload.
+Skips `node_modules` and files that never mention `scribbles.`.
 
 ### `cjs-extensions.js`
 CJS source-transformation hook installer. Inlines the ~25 lines of

@@ -44,7 +44,7 @@ function preloadSource() {
     function path_(p) { return require('path').normalize(String(p)); }
     const load = Module._load;
     Module._load = function (request, parent, ...rest) {
-      if (request === '../../package.json' && parent && parent.filename === process.env.SCRIBBLES_INDEX) {
+      if (parent && parent.filename === process.env.SCRIBBLES_INDEX && path_(request) === target) {
         return body;
       }
       return load.call(this, request, parent, ...rest);

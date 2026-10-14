@@ -44,9 +44,10 @@
  *
  * Technical context
  * -----------------
- * - `createRequire(import.meta.url)` pulls in the bundled CJS artifact
+ * - A static `import` pulls in the bundled CJS artifact
  *   `dist/scribbles.js`, which is the same bundle users receive from
- *   npm. The `exports` map in `package.json` routes bare-specifier
+ *   npm. (It is a static import rather than `createRequire` so that
+ *   bundlers can follow it.) The `exports` map in `package.json` routes bare-specifier
  *   `import` statements to this file and bare-specifier `require()`
  *   calls to the CJS bundle, so ESM users transparently get the hard
  *   cut without noticing the implementation detail.
@@ -70,16 +71,11 @@
  *   objects with arbitrary properties.
  */
 
-import { createRequire } from 'node:module';
-
-// Anchor the require at this file's URL so relative paths resolve
-// correctly regardless of where the package is installed.
-const require = createRequire(import.meta.url);
-
-// Pull in the CJS core via the published bundle. `package.json`'s
-// `exports` map routes the `require` condition to this same file, so
-// both import paths share a single evaluation of the core.
-const scribblesCjs = require('./dist/scribbles.js');
+// A static import (not `createRequire(...)('./dist/scribbles.js')`) so bundlers such as
+// `bun build`, esbuild and rollup can see the dependency and include the CJS core.
+// Node and Bun hand a CJS module's `module.exports` back as the default import, and the
+// `exports` map routes `require` to this same file, so both paths share one evaluation.
+import scribblesCjs from './dist/scribbles.js';
 
 // Infrastructure property names that the ESM default export must hide.
 // Anything in this set returns `undefined` via the Proxy below — that

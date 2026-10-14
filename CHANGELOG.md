@@ -47,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the caller and `headers`, `url`, `path`, `query`, `params` and `method` were lost. They are
   now kept, and the traceparent's parent span id is reported as `trace.parentId` in `dataOut`.
 
+### Fixed
+
+- **A failing `dataOut` or `stdOut` no longer throws out of `scribbles.info(...)` and friends.**
+  Sink errors are caught (the other destination still receives the entry) and reported through
+  the new optional `onSinkError(error, sink, entry)` config hook; with no hook the first failure
+  of each destination function is written once to `console.error`. A `stdOut` object with no
+  function for an enabled level is now rejected by `config()` (`<level> was not found on stdOut`)
+  instead of throwing from a later log call. See ReadMe "When a destination fails".
+
 ---
 
 ## [2.0.1] — Integrator regression fixes (Bun CJS chain, trace-across-await)

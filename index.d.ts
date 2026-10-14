@@ -87,6 +87,11 @@ type StdOutConfig =
     | null;
 
 /**
+ * Which destination failed, as reported to `onSinkError`.
+ */
+type SinkName = 'stdOut' | 'dataOut';
+
+/**
  * Configuration options for scribbles
  */
 interface ScribblesConfig {
@@ -106,6 +111,13 @@ interface ScribblesConfig {
     stdOut?: StdOutConfig;
     /** Callback to receive structured log data objects */
     dataOut?: (data: LogEntry) => void;
+    /**
+     * Called when `stdOut` (or the formatting of its line) or `dataOut` throws. The error never
+     * reaches the code that logged. `sink` says which destination failed and `entry` is the log
+     * entry that was not delivered. If the hook throws, that is ignored. Without a hook the first
+     * failure of each destination function is written once to `console.error`.
+     */
+    onSinkError?: (error: unknown, sink: SinkName, entry: LogEntry) => void;
     /** Custom stringify function for values */
     stringify?: (value: unknown, pretty: PrettyOptions) => string;
     /** Headers to forward in trace context (string, RegExp, array, or null to disable) */

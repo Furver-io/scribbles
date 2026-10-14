@@ -9,6 +9,7 @@ const { getSource } = require('../utils/helpers');
 const { defaultColorScheme, colorblindScheme, shouldEnableColors } = require('../formatting/colors');
 const { mergeResolvedSyntaxScheme } = require('../formatting/stringifySyntax');
 const { applyProsePrettyConfig } = require('./scribblesConfigProse');
+const { assertStdOutCoversLevels } = require('./sinks');
 
 /**
  * Default visible caption for `groupEnd` when the caller does not pass an override string.
@@ -46,6 +47,14 @@ function createConfig(deps) {
         }
       }) // END forEach
     } // END if
+
+    // Reject an stdOut object that cannot print an enabled level BEFORE any state changes,
+    // so a rejected call leaves the previous working setup in place.
+    assertStdOutCoversLevels(
+      'stdOut' in opts ? opts.stdOut : config.stdOut,
+      opts.levels || config.levels,
+      'logLevel' in opts ? opts.logLevel : config.logLevel
+    )
 
     // Clean config - remove old log level functions
     config.levels.forEach((logLevel) => {

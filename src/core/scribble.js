@@ -15,6 +15,7 @@ const status = require('../system/status');
 const { myNamespace } = require('../tracing/namespace');
 const { parceStringVals } = require('../parsing/parceStringVals');
 const { formatScribbleStdOutLine } = require('./scribbleStdOutFormat');
+const { deliverToSinks } = require('./sinks');
 
 const notUsed = { not: 'used' }
 
@@ -154,25 +155,13 @@ function createScribble(deps) {
     }
 
     /**
-     * Outputs the log body to configured destinations
+     * Outputs the log body to configured destinations; a failing destination is
+     * reported through `onSinkError` and never thrown into the caller
      * @param {Object} body - The structured log body
      */
     const output = (body) => {
 
-      if (config.stdOut) {
-        let stdOut;
-        if (config.stdOut[level]) {
-          stdOut = config.stdOut[level]
-        } else if ('function' === typeof config.stdOut) {
-          stdOut = config.stdOut
-        } else if ('function' === typeof config.stdOut.log) {
-          stdOut = config.stdOut.log
-        } else {
-          throw new Error(`${level} was not found on stdOut`)
-        }
-        stdOut(body.toString())
-      } // END if config.stdOut
-      config.dataOut && config.dataOut(body);
+      deliverToSinks(config, level, body)
     }
 
     // Am I inside a trace ?

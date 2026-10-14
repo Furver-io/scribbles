@@ -22,6 +22,7 @@ export type {
     PrettyOptions,
     GitEnvConfig,
     StdOutConfig,
+    SinkName,
     ScribblesConfig,
     GitInfo,
     TraceInfo,

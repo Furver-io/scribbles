@@ -280,6 +280,8 @@ There is a `config` that takes a configuration object.
   * Redirect the string output of the log entry
 * **dataOut**  [function]
   * A callback to receive an object representing the log entry
+* **onSinkError** [function] - `(error, sink, entry) => void`
+  * A failing `stdOut` or `dataOut` never throws into the code that logged; see [When a destination fails](#when-a-destination-fails)
 * **stringify**  [function]
   * A function used in stdOut to parsing for values into a string
 * **hijack** [boolean] - *default: `true`*
@@ -551,6 +553,27 @@ scribbles.danger("hello world")
 
 // 2022-06-27T16:24:06.473 [test-runner#3d608bf] <danger> hello world
 ```
+
+## When a destination fails
+
+`stdOut` and `dataOut` are your code (a log vendor, a socket, a formatter) and can throw. A logging call never throws because of them: the error is caught, the other destination still receives the entry, and your request handler carries on.
+
+```js
+scribbles.config({
+  dataOut: (entry) => vendor.send(entry),           // may throw when the vendor is down
+  onSinkError: (error, sink, entry) => {
+    // sink is 'stdOut' or 'dataOut'; entry is the log entry that was not delivered
+    metrics.increment('logging.sink_failed', { sink })
+  }
+})
+
+scribbles.info('order placed')   // never throws, even if vendor.send throws
+```
+
+* `sink` is `'stdOut'` when the printer (or the formatting of the line, e.g. a throwing `stringify`) failed and `'dataOut'` when `dataOut` failed.
+* If `onSinkError` itself throws, that is ignored too.
+* **Without** `onSinkError`, the first failure of each destination function is written once to `console.error` (`scribbles: dataOut failed and the entry was not delivered: ...`) and later failures of that same function are silent, so a dead shipper is visible without flooding stderr. Setting a new destination function re-arms the report.
+* A `stdOut` **object** that has no function for an enabled level (and no `log` function to fall back on) is a setup mistake: `config()` throws `<level> was not found on stdOut` and keeps the previous setup. Levels switched off by `logLevel` do not need a function. The special levels `timer`, `group` and `status` are only known when they are logged, so a missing function for them is reported through `onSinkError` like any other destination failure.
 
 ## dataOut
 

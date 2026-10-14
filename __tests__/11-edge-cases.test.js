@@ -307,21 +307,21 @@ describe('StdOut Errors', () => {
         });
     });
 
-    it('should throw when stdOut[level] not found', () => {
-        scribbles.config({
-            stdOut: {
-                error: () => { },
-                // Missing other levels
-            },
-            dataOut: null,
-            levels: ['error', 'warn', 'log'],
-            logLevel: 'log',
-            format: '{message}'
-        });
-
+    it('should reject at config time a stdOut object with no function for an enabled level', () => {
+        // Was: threw from scribbles.log() later. A missing level is a setup mistake, so it is
+        // now rejected when applying the options (see 57-sink-errors-never-reach-the-caller).
         expect(() => {
-            scribbles.log('test');
-        }).toThrow(/log.*not found/);
+            scribbles.config({
+                stdOut: {
+                    error: () => { },
+                    // Missing other levels
+                },
+                dataOut: null,
+                levels: ['error', 'warn', 'log'],
+                logLevel: 'log',
+                format: '{message}'
+            });
+        }).toThrow(/warn.*not found/);
     });
 });
 

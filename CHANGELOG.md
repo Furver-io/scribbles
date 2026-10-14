@@ -33,8 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wraps the package in an ES module (`this` is `null`, not the global object). The ReadMe no
   longer claims a plain `bun build` keeps variable names; the plugin is how to get them.
 
-### Fixed
-
 - **`scribbles.trace(...)` now returns the callback's result.** It used to discard it and
   return `undefined`, so async handlers lost their result and their rejections became
   unhandled. The callback still receives the span id string first and now also a
@@ -46,8 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It replaced the trace's state, so the next log inside the trace threw a `TypeError` into
   the caller and `headers`, `url`, `path`, `query`, `params` and `method` were lost. They are
   now kept, and the traceparent's parent span id is reported as `trace.parentId` in `dataOut`.
-
-### Fixed
 
 - **A failing `dataOut` or `stdOut` no longer throws out of `scribbles.info(...)` and friends.**
   Sink errors are caught (the other destination still receives the entry) and reported through
@@ -61,8 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previous setup. Because `LOG_LEVEL` is applied when scribbles loads, a bad value makes
   `require('scribbles')` throw (fail fast at start-up). Passing new `levels` without a matching
   `logLevel` is rejected the same way.
-
-### Fixed
 
 - **Outgoing requests from a build without git information:** `x-git-hash` is no longer sent
   as the string `undefined` when the git hash is empty (Docker or CI builds with no `.git`
@@ -92,6 +86,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   object, `Headers` or array of pairs; the caller's headers, body, method, signal and objects are
   left as written, and a `traceparent` the caller sets wins. Bun's `fetch.preconnect` is kept. A
   runtime with no global `fetch` still boots.
+- **Dependencies:** `moment` (inlined into `dist/scribbles.js`) moves to 2.31.0, and the dev-only
+  `brace-expansion`, `js-yaml`, `browserslist`, `@babel/core` and `baseline-browser-mapping` to
+  patched releases; `uuid` is overridden to `^11.1.1` for nyc. `sprintf-js` has no patched release.
+- **Test tooling:** `npm run test:full-coverage` now merges the Jest, scenario (child-process) and
+  subprocess coverage into one `coverage/coverage-final.json`.
 
 ---
 

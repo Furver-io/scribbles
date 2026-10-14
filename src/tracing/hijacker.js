@@ -5,9 +5,10 @@
  * --------------
  * When a user opts into outbound header propagation via
  * `scribbles.config({ headers: [...] })` or `headersMapping`, Scribbles
- * wraps Node's `http.request` / `https.request` so that every outgoing
- * request gets the W3C traceparent / tracestate plus any configured
- * forwarded headers injected on the way out. This is the glue that
+ * wraps Node's `http.request`, `http.get`, `https.request` and
+ * `https.get` so that every outgoing request made inside a trace gets the
+ * W3C traceparent / tracestate plus any configured forwarded headers
+ * injected on the way out. Outside a trace nothing is injected. This is the glue that
  * makes distributed tracing work seamlessly across microservices
  * without the caller having to thread headers by hand.
  *
@@ -38,6 +39,18 @@
  * native original, no matter how many times the hijacker module has
  * been re-evaluated.
  *
+ * What cannot be covered
+ * -----------------------
+ * The wrappers replace the properties on the `http` / `https` modules, so
+ * code that reads those properties AFTER scribbles loads is covered:
+ * `http.get(...)`, `const { request } = require('http')` and, on Node,
+ * `import { get } from 'node:http'` (refreshed with
+ * `syncBuiltinESMExports`). A function copied out of the module BEFORE
+ * scribbles loads is the native function and cannot be reached. Bun does
+ * not refresh ES named imports of built-ins. Installation happens once from
+ * `index.js`, so `hijack: false` only has an effect from a package.json
+ * read before load (see the ReadMe).
+ *
  * Technical context
  * -----------------
  * - `Symbol.for(...)` is used rather than a private Symbol so the key
@@ -57,41 +70,46 @@
 const http = require('http')
 const https = require('https')
 
-const { withTraceHeaders } = require('./outbound-args')
+const { syncBuiltinESMExports } = require('module')
 
-// Registry keys for the true native request functions. Stored on the
-// http / https core modules themselves so they survive Jest's
-// per-file module-registry reset.
-const HTTP_ORIGINAL = Symbol.for('scribbles.http.originalRequest')
-const HTTPS_ORIGINAL = Symbol.for('scribbles.https.originalRequest')
+const { withTraceHeaders } = require('./outbound-args')
 
 // Marker attached to every wrapper this file produces — see "Technical
 // context" in the file header for why we expose it.
 const WRAPPER_MARKER = Symbol.for('scribbles.hijacker.wrapper')
 
-// Cache the true native functions exactly once per process.
-//
-// The prior implementation of this block contained a ternary
-// (`http.request[WRAPPER_MARKER] ? http.request : http.request.bind(http)`)
-// intended to "walk off" an existing wrapper if some adversarial preload
-// had replaced `http.request` with its own wrapper BEFORE Scribbles
-// ever loaded. That branch is unreachable from the public interface:
-// this `if` guard only runs on the first Scribbles boot in the process,
-// and on the first boot `http.request` is the native function (no
-// wrapper marker present) because Scribbles is the only codepath that
-// stamps `WRAPPER_MARKER`. Removed per the dead-code rule; the commit
-// preserving the context is recorded in git history. Should a real
-// scenario ever require walking a pre-existing wrapper chain, the
-// resurrection is a few lines and can cite the history.
-if (!http[HTTP_ORIGINAL]) {
-  http[HTTP_ORIGINAL] = http.request.bind(http)
-}
-if (!https[HTTPS_ORIGINAL]) {
-  https[HTTPS_ORIGINAL] = https.request.bind(https)
+// Registry key suffixes for the true native functions, which are stored on
+// the http / https core modules themselves (so they survive Jest's per-file
+// module-registry reset) under `Symbol.for('scribbles.<protocol>.<suffix>')`.
+const ORIGINAL_KEY = { request: 'originalRequest', get: 'originalGet' }
+
+/**
+ * Returns the TRUE native `request` / `get` function of a core module,
+ * caching it on the module the first time any boot of scribbles sees it.
+ * Later boots (a re-evaluated module under Jest, a second copy in
+ * `node_modules`) find the cached native and never capture a wrapper.
+ *
+ * The prior implementation contained a ternary intended to "walk off" a
+ * wrapper some adversarial preload had installed before Scribbles loaded.
+ * That branch was unreachable from the public interface (Scribbles is the
+ * only code that stamps `WRAPPER_MARKER`) and was removed per the dead-code
+ * rule; git history keeps the context should a real scenario need it.
+ *
+ * @param {Object} core - the `http` or `https` module
+ * @param {string} protocol - `'http'` or `'https'`, part of the registry key
+ * @param {string} method - `'request'` or `'get'`
+ * @returns {Function} the native function, bound to `core`
+ */
+function nativeOf(core, protocol, method) {
+  const key = Symbol.for(`scribbles.${protocol}.${ORIGINAL_KEY[method]}`)
+  if (!core[key]) {
+    core[key] = core[method].bind(core)
+  }
+  return core[key]
 }
 
 /**
- * Wraps http.request and https.request to inject trace headers.
+ * Wraps http/https `request` and `get` to inject trace headers.
  *
  * Every invocation installs a fresh wrapper that closes over the given
  * `config`. The wrapper is idempotent w.r.t. the native originals:
@@ -108,7 +126,7 @@ if (!https[HTTPS_ORIGINAL]) {
 function hijacker(scribbles, config) {
 
   /**
-   * Creates a wrapper function for http/https request that injects
+   * Creates a wrapper function for http/https request or get that injects
    * trace headers when the live config asks for them, or passes the
    * call through untouched otherwise.
    *
@@ -118,7 +136,8 @@ function hijacker(scribbles, config) {
    */
   function createWrapper(originalRequest) {
     /**
-     * Drop-in replacement for `http.request` / `https.request`. Accepts
+     * Drop-in replacement for `http.request` / `http.get` (and the https
+     * pair). Accepts
      * the same `(url | options, [options | callback], [callback])`
      * overload set Node exposes, normalises it, asks `scribbles.trace`
      * for the header block to inject, and forwards to the original.
@@ -147,8 +166,15 @@ function hijacker(scribbles, config) {
     return requestWrapper
   }
 
-  http.request = createWrapper(http[HTTP_ORIGINAL])
-  https.request = createWrapper(https[HTTPS_ORIGINAL])
+  http.request = createWrapper(nativeOf(http, 'http', 'request'))
+  http.get = createWrapper(nativeOf(http, 'http', 'get'))
+  https.request = createWrapper(nativeOf(https, 'https', 'request'))
+  https.get = createWrapper(nativeOf(https, 'https', 'get'))
+
+  // ES modules that already imported `node:http` hold a snapshot of the
+  // named exports (`import { get } from 'node:http'`); this refreshes it so
+  // named imports see the wrappers too. (Bun ignores the call.)
+  syncBuiltinESMExports()
 }
 
 module.exports = hijacker

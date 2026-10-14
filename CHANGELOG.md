@@ -80,6 +80,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `http.request(new URL(...), { method: 'POST' })` silently dropped the options, scribbles wrote a
   `headers` property onto the caller's `URL` or options object, and request headers given as an
   array were corrupted. The caller's objects are now left untouched.
+- **`http.get` and `https.get` now carry the trace.** Node's `get` is a separate function that
+  never went through the wrapped `request`, so it sent no trace headers. Named imports taken
+  after scribbles loads are covered too (`const { get } = require('http')`, and on Node
+  `import { get } from 'node:http'`, refreshed with `syncBuiltinESMExports`). Not coverable: a
+  function copied out of `http` before scribbles loads, and Bun's ES named imports of built-ins;
+  see the ReadMe.
 
 ---
 

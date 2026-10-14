@@ -15,7 +15,7 @@
   * All logs with [`.trace(`](#trace-function-signature) will be **automatically** tagged, no matter where in your app it is.
   * use `traceTrigger` to filter a set of logs to only when there is a threshold is met or exceeded
   * Can trace incoming requests with the [w3c trace-context](https://www.w3.org/TR/trace-context/) headers
-  * With `headers` or `headersMapping` configured, scribbles will intercept outgoing HTTP and HTTPS requests and inject trace headers :sunglasses:
+  * With `headers` or `headersMapping` configured, scribbles will intercept outgoing `http` / `https` `request` and `get` calls made inside a trace and inject trace headers :sunglasses:
   * Can **automatically** inject IDs into outgoing headers. Works with [axios](https://www.npmjs.com/package/axios#axios), [request](https://www.npmjs.com/package/request) & [http](https://nodejs.org/api/http.html#http_http_get_url_options_callback)/[https](https://nodejs.org/api/https.html#https_https_get_url_options_callback)
 * **More insight in your logs**
   * Git repository name
@@ -287,6 +287,7 @@ There is a `config` that takes a configuration object.
 * **hijack** [boolean] - *default: `true`*
   * Enable or disable automatic HTTP/HTTPS request interception for trace header injection
   * Set to `false` to disable automatic header injection into outgoing requests
+  * Only a `"scribbles": { "hijack": false }` block in your `package.json` takes effect: the wrappers are installed once, while scribbles loads, so `scribbles.config({ hijack: false })` afterwards does not remove them
 * **mode** [string] - *default: 'dev'*
   * Can use NODE_ENV from environment variables
 * **format** [string] - *defaults: "{repo}:{mode}:{branch} [{spanLabel} {spanId}] {time} #{hash} <{logLevel}> {fileName}:{lineNumber} {message} {value} {stackTrace}"*
@@ -1127,6 +1128,15 @@ app.listen(port, () => scribbles.status(`App is ready!`))
 ```
 
 **Example above is for [axios](https://www.npmjs.com/package/axios) but it will also work with [http](https://nodejs.org/api/http.html#http_http_get_url_options_callback)/[https](https://nodejs.org/api/https.html#https_https_request_url_options_callback) and [request](https://www.npmjs.com/package/request)**
+
+#### What gets the trace headers, and what does not
+
+Injection needs `headers` or `headersMapping` in the config, and a trace to propagate (a call made outside any `scribbles.trace(...)` leaves exactly as you wrote it).
+
+* `http.request`, `http.get`, `https.request` and `https.get`, with any call shape (`url`, `url, callback`, `url, options, callback`, `options, callback`). Headers you set yourself are kept, and if you set `traceparent` yourself yours wins.
+* Anything you reach through the module **after** scribbles loads: `http.get(...)`, `const { get } = require('http')` below your `require('scribbles')`, and on Node `import { get } from 'node:http'`.
+* **Not covered:** a function copied out of `http` / `https` **before** scribbles loads (`const { request } = require('http')` above `require('scribbles')`) is the native function. Load scribbles first. Bun does not refresh `import { get } from 'node:http'` named imports; use `require` or call `http.get(...)` through the module there.
+* Libraries that bundle their own HTTP client rather than calling Node's `http` (or `fetch`) are not covered either; pass `scribbles.trace.headers()` to them yourself.
 
 ---
 

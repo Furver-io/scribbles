@@ -816,6 +816,8 @@ describe('Scenario: trace.headers with empty git hash — header omitted', () =>
     const savedExec = childProcess.execSync;
     const savedHttpRequest = http.request;
     const savedHttpsRequest = https.request;
+    const savedHttpGet = http.get;
+    const savedHttpsGet = https.get;
     childProcess.execSync = () => { throw new Error('no git'); };
     try {
       jest.resetModules();
@@ -835,6 +837,8 @@ describe('Scenario: trace.headers with empty git hash — header omitted', () =>
       // closure.
       http.request = savedHttpRequest;
       https.request = savedHttpsRequest;
+      http.get = savedHttpGet;
+      https.get = savedHttpsGet;
     }
   });
 });
@@ -903,10 +907,14 @@ describe('Scenario: helpers.getSource with a source-map that resolves differentl
   let origMap;
   let savedHttpRequest;
   let savedHttpsRequest;
+  let savedHttpGet;
+  let savedHttpsGet;
 
   beforeEach(() => {
     savedHttpRequest = http.request;
     savedHttpsRequest = https.request;
+    savedHttpGet = http.get;
+    savedHttpsGet = https.get;
     // Ensure scribbles (and therefore source-map-support.install())
     // has run. If already loaded this is a cached no-op; if a prior
     // `jest.resetModules()` cleared it, this re-runs boot.
@@ -926,6 +934,8 @@ describe('Scenario: helpers.getSource with a source-map that resolves differentl
     // wrapper, not an isolated reboot's.
     http.request = savedHttpRequest;
     https.request = savedHttpsRequest;
+    http.get = savedHttpGet;
+    https.get = savedHttpsGet;
   });
 
   it('uses mapped source/line/col when source-map resolution succeeds', () => {

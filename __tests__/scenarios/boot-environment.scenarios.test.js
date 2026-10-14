@@ -256,16 +256,22 @@ describe('Scenario: index.js — process.ppid defensive fallbacks', () => {
   const https = require('https');
   let savedHttpRequest;
   let savedHttpsRequest;
+  let savedHttpGet;
+  let savedHttpsGet;
 
   beforeEach(() => {
     jest.resetModules();
     savedHttpRequest = http.request;
     savedHttpsRequest = https.request;
+    savedHttpGet = http.get;
+    savedHttpsGet = https.get;
   });
 
   afterEach(() => {
     http.request = savedHttpRequest;
     https.request = savedHttpsRequest;
+    http.get = savedHttpGet;
+    https.get = savedHttpsGet;
   });
 
   it('uses the random-nibble fallback path when process.ppid is undefined', () => {

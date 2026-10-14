@@ -74,6 +74,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `traceparent: 00-undefined-undefined-01` and `tracestate: <vendor>=undefined`. It now leaves
   exactly as the developer wrote it. `scribbles.trace.headers()` outside a trace likewise returns
   only the headers passed to it.
+- **`http.request(urlString)` with no options object** no longer throws
+  `TypeError: Cannot read properties of undefined (reading 'headers')` once `headers` or
+  `headersMapping` is configured. The same argument handling also fixes three neighbours:
+  `http.request(new URL(...), { method: 'POST' })` silently dropped the options, scribbles wrote a
+  `headers` property onto the caller's `URL` or options object, and request headers given as an
+  array were corrupted. The caller's objects are now left untouched.
 
 ---
 

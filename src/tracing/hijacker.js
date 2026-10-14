@@ -57,6 +57,8 @@
 const http = require('http')
 const https = require('https')
 
+const { withTraceHeaders } = require('./outbound-args')
+
 // Registry keys for the true native request functions. Stored on the
 // http / https core modules themselves so they survive Jest's
 // per-file module-registry reset.
@@ -126,34 +128,16 @@ function hijacker(scribbles, config) {
      * how "user disabled the feature at runtime" resolves to
      * zero-overhead passthrough.
      *
-     * @param {string|object|URL} url - First positional arg.
-     * @param {object|Function} [options] - Options object or callback.
-     * @param {Function} [callback] - Response callback.
+     * @param {...*} args - `(url | options, [options | callback], [callback])`
      * @returns {import('http').ClientRequest}
      */
-    function requestWrapper(url, options, callback) {
+    function requestWrapper(...args) {
 
       if (!config || (!config.headers && !config.headersMapping)) {
-        return originalRequest(url, options, callback)
+        return originalRequest(...args)
       }
 
-      if ('function' === typeof options) {
-        callback = options
-        options = {}
-      }
-
-      if ('object' === typeof url) {
-        options = url;
-        url = null;
-      }
-
-      options.headers = scribbles.trace.headers(options.headers || {})
-
-      if (url) {
-        return originalRequest(url, options, callback)
-      } else {
-        return originalRequest(options, callback)
-      }
+      return originalRequest(...withTraceHeaders(scribbles, args))
     }
     // Tag the wrapper so subsequent evaluations of this module can
     // recognise an existing wrapper and avoid capturing it as "the

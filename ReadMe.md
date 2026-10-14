@@ -1293,6 +1293,7 @@ Scribbles uses a modular architecture with the main entry point (`index.js`) ser
 | `middleware.js` | Express middleware for trace context propagation |
 | `namespace.js` | CLS namespace for async trace correlation |
 | `hijacker.js` | HTTP/HTTPS request interception for header injection |
+| `outbound-args.js` | Call-shape and header handling for the traced `http` / `https` wrappers |
 | `stringify.js` / `stringifyImpl.js` | Value serialization (pretty-printed; `pretty.syntaxHighlight` defaults true with colors) |
 | `stringifySyntax.js` | Syntax color palettes and painters for the `{value}` column |
 | `status.js` | System status collection (CPU, memory, process) |

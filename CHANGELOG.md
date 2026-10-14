@@ -62,6 +62,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `require('scribbles')` throw (fail fast at start-up). Passing new `levels` without a matching
   `logLevel` is rejected the same way.
 
+### Fixed
+
+- **Outgoing requests from a build without git information:** `x-git-hash` is no longer sent
+  as the string `undefined` when the git hash is empty (Docker or CI builds with no `.git`
+  folder). Node rejects that header value, so the first outgoing `http.request` inside a trace
+  threw `TypeError: Invalid value "undefined" for header "x-git-hash"`. The header is now
+  omitted, both for automatic injection and for `scribbles.trace.headers()`.
+
 ---
 
 ## [2.0.1] — Integrator regression fixes (Bun CJS chain, trace-across-await)

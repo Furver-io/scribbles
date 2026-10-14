@@ -793,9 +793,9 @@ describe('Scenario: config.hijack=false disables http.request wrapping', () => {
   });
 });
 
-describe('Scenario: trace.headers with empty git hash — || undefined arm', () => {
+describe('Scenario: trace.headers with empty git hash — header omitted', () => {
   // `trace.js` line ~123:
-  //     "x-git-hash": gitValues.hash || undefined,
+  //     const gitHeader = gitValues.hash ? {...} : {}
   // — FALSE arm fires when `gitValues.hash` is the empty string, i.e.
   // Scribbles is running somewhere git is unavailable and the default
   // fallback values are in effect. Driven by patching
@@ -812,7 +812,7 @@ describe('Scenario: trace.headers with empty git hash — || undefined arm', () 
   const http = require('http');
   const https = require('https');
 
-  it('emits x-git-hash=undefined when gitValues.hash is empty', () => {
+  it('omits x-git-hash when gitValues.hash is empty', () => {
     const savedExec = childProcess.execSync;
     const savedHttpRequest = http.request;
     const savedHttpsRequest = https.request;
@@ -824,8 +824,7 @@ describe('Scenario: trace.headers with empty git hash — || undefined arm', () 
         scribbles.config({ stdOut: null, dataOut: null });
         scribbles.trace('no-git-span', () => {
           const h = scribbles.trace.headers();
-          expect(h).toHaveProperty('x-git-hash');
-          expect(h['x-git-hash']).toBeUndefined();
+          expect(h).not.toHaveProperty('x-git-hash');
         });
       });
     } finally {

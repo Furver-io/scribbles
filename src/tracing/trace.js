@@ -151,12 +151,13 @@ function createTrace(deps) {
     }
 
     // `gitValues` is always an object (see `src/system/getGitStatus.js`
-    // — either the resolved git metadata or the `{hash:"",repo:"",
-    // branch:""}` fallback), so the prior `gitValues && gitValues.hash`
-    // defensive guard's falsy arm was unreachable. Simplified to the
-    // direct property access per CASE's dead-code rule.
-    return deepMerge(Object.assign({
-      "x-git-hash": gitValues.hash || undefined,
+    // - either the resolved git metadata or the `{hash:"",repo:"",
+    // branch:""}` fallback). When the hash is empty (a build without a
+    // `.git` folder) the `x-git-hash` header is omitted entirely: a header
+    // whose value is `undefined` is rejected by Node's http client.
+    const gitHeader = gitValues.hash ? { 'x-git-hash': gitValues.hash } : {}
+
+    return deepMerge(Object.assign(gitHeader, {
       traceparent: `${version || '00'}-${traceId}-${spanId}-${flag || '01'}`,
       tracestate: tracestateValue
     }, headers || {}), customHeader)

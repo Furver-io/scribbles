@@ -15,3 +15,21 @@ Each file is a standalone Node script that:
 4. `process.exit(0)` on success / `process.exit(1)` on failure.
 
 See `files.md` for the per-file breakdown.
+
+## How the coverage reports are merged
+
+`npm run test:full-coverage` leaves one `coverage/coverage-final.json` that counts
+every way the code is exercised:
+
+1. `jest --coverage` — in-process tests (instrumented by Jest).
+2. `nyc --silent jest __tests__/scenarios` — the scenario suites spawn real `node`
+   children; nyc's environment is inherited, so those children report too.
+3. `nyc --silent --clean=false node __tests__/subprocess/run-all.js` — the scripts here.
+4. The Jest report is copied into `.nyc_output/` and `nyc report` merges all of it
+   (Jest and nyc use the same instrumenter, so the statement maps are identical) and
+   writes `text`, `json` and `lcov` into `coverage/`.
+
+Anything that only the plain Jest run reaches (for example `Module._extensions['.cjs']`
+being absent, which nyc itself defines) still counts, because the Jest pass is
+step 1 and its counts are merged, never replaced.
+
